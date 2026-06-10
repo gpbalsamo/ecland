@@ -17,9 +17,6 @@ USE YOS_VEG     , ONLY : TVEG
 USE YOS_BVOC    , ONLY : TBVOC
 USE YOS_URB     , ONLY : TURB
 
-USE ISO_C_BINDING
-USE ABORT_SURF_MOD
-
 ! (C) Copyright 2005- ECMWF.
 !
 ! This software is licensed under the terms of the Apache Licence Version 2.0
@@ -31,8 +28,6 @@ USE ABORT_SURF_MOD
 IMPLICIT NONE
 
 PRIVATE
-
-PUBLIC :: ALLO_SURF, DEALLO_SURF, GET_SURF
 
 TYPE, PUBLIC :: TSURF
   TYPE(TAGS)      :: YAGS
@@ -58,69 +53,10 @@ TYPE, PUBLIC :: TSURF
   PROCEDURE :: WIPE_DEVICE => TSURF_WIPE_DEVICE
 END TYPE TSURF
 
-! M. Lange: This construct has been removed in favour of storing the
-! storage object on the model and keeping a single local pointer to it
-! here in the module. This now implies that the implicit localisation
-! attempted via the linked list is defunct and any remaining use cases
-! need to switch to implicit OpenMP thread localtion.
-
-!TYPE :: TLIST
-!  TYPE(TSURF) :: YSURF
-!  TYPE(C_PTR) :: CPTR 
-!  TYPE(TLIST),  POINTER :: NEXT
-!END TYPE TLIST
-
-! TYPE(TLIST), POINTER, SAVE :: LIST => NULL()
-
-! An explicitly typed pointer to the object and an implicitly typed
-! C_PTR for backward compatibility.
-TYPE(TSURF), POINTER, SAVE :: YSURF
-TYPE(C_PTR), SAVE :: YDSURF
+! Single global surface metadata object.
+TYPE(TSURF), PUBLIC, SAVE :: YSURF
 
 CONTAINS
-
-SUBROUTINE ALLO_SURF(ZYDSURF, ZYSURF)
-IMPLICIT NONE
-TYPE(C_PTR), INTENT(OUT) :: ZYDSURF
-TYPE(TSURF), TARGET, INTENT(IN), OPTIONAL :: ZYSURF
-
-! Backward compatbility mode that allows the associated C_PTR to be
-! associated with a given target object. Note that this used to handle
-! a global linked list of objects, only accessible via C_PTR
-! indirection, which has been removed now!
-IF (PRESENT(ZYSURF)) THEN
-  YSURF => ZYSURF
-ELSE
-  ALLOCATE(YSURF)
-END IF
-YDSURF = C_LOC(YSURF)
-ZYDSURF = YDSURF
-
-END SUBROUTINE ALLO_SURF
-
-SUBROUTINE DEALLO_SURF(ZYDSURF)
-IMPLICIT NONE
-
-TYPE(C_PTR), INTENT(INOUT) :: ZYDSURF
-DEALLOCATE(YSURF)
-NULLIFY(YSURF)
-END SUBROUTINE DEALLO_SURF
-
-
-FUNCTION GET_SURF(ZYDSURF)
-IMPLICIT NONE
-
-TYPE(TSURF), POINTER    :: GET_SURF
-TYPE(C_PTR), INTENT(IN) :: ZYDSURF
-
-! Backward compatbility mode that returns the surface object from a
-! C_PTR. Strictly speaking this is no longer required, but the
-! behaviour is maintained for now.
-
-! TODO: Add check that C pointer is correctly associated.
-GET_SURF => YSURF
-
-END FUNCTION GET_SURF
 
 SUBROUTINE TSURF_UPDATE_DEVICE(SELF, LCREATED)
   CLASS(TSURF) :: SELF

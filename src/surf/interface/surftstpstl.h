@@ -29,7 +29,7 @@ SUBROUTINE SURFTSTPSTL(YDSURF, KIDIA, KFDIA, KLON, KLEVS, KLEVSN, KTILES,&
  & PTSNE1  , PTSAE1  , PTIAE1)
 
 USE PARKIND1, ONLY : JPIM, JPRB
-USE, INTRINSIC :: ISO_C_BINDING
+USE YOS_SURF, ONLY : TSURF
 
 ! (C) Copyright 2012- ECMWF.
 !
@@ -158,7 +158,7 @@ IMPLICIT NONE
 
 ! Declaration of arguments
 
-TYPE(C_PTR)       ,INTENT(IN)    :: YDSURF
+TYPE(TSURF)       ,INTENT(IN)    :: YDSURF
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PSSDP2(:,:)                                                          
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PSSDP3(:,:,:)   
 INTEGER(KIND=JPIM),INTENT(IN)    :: KIDIA 
