@@ -15,7 +15,7 @@ The model includes a number of physical sub-modules aiming at representing the m
 A full scientific and technical description of ecLand, CY48R1, can be found in
 [Boussetta et al. (2021)](https://www.mdpi.com/2073-4433/12/6/723). An up-to-date detailed description of ecLand as used in IFS cycles can be found in Chapter 8 of the [IFS documentation](https://www.ecmwf.int/en/publications/ifs-documentation).
 
-ecLand v2.0.0 is scientifically equivalent to the ecLand used in IFS CY50R1 and it is recommended for users requiring a stable release.
+ecLand v2.0.0 is scientifically equivalent to the ecLand used in IFS CY50R1.0 and it is recommended for users requiring a stable release.
 
 
 Installing ecLand
