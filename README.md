@@ -15,6 +15,8 @@ The model includes a number of physical sub-modules aiming at representing the m
 A full scientific and technical description of ecLand, CY48R1, can be found in
 [Boussetta et al. (2021)](https://www.mdpi.com/2073-4433/12/6/723). An up-to-date detailed description of ecLand as used in IFS cycles can be found in Chapter 8 of the [IFS documentation](https://www.ecmwf.int/en/publications/ifs-documentation).
 
+ecLand v2.0.0 is scientifically equivalent to the ecLand used in IFS CY50R1 and it is recommended for users requiring a stable release.
+
 
 Installing ecLand
 ================
@@ -48,6 +50,8 @@ In that case an internet connection is required.
 
 Building ecLand
 --------------
+
+The following instructions apply to the main branch. For installing v2.0.0 or older see below ("Building ecLand (v2.0.0 stable release)")
 
 #### Quick instructions for ECMWF HPC
 
@@ -102,6 +106,8 @@ ecLand exposes the following additional CMake options:
 
 Installing the bundle is triggered via adding the `--install` flag to the bundle build step.
 
+#### Testing ecLand
+
 Optionally, tests can be run to check succesful compilation, when the feature TESTS is enabled.
 In the build folder (e.g. `<build-dir>/ecland`), run:
 
@@ -138,6 +144,97 @@ Once the environment is properly configured, a standalone build can be performed
 3. Install ecland:
 
     cmake --install `<path-to-build>` --parallel `<nthreads>`
+
+
+Building ecLand (v2.0.0 stable release)
+--------------
+
+#### Quick instructions for ECMWF HPC
+
+Load the required modules. For an Intel build:
+
+    module load prgenv/intel intel/2021.4 cmake/3.25 ninja/1.11.1 hpcx-openmpi/2.9 netcdf4/4.9.1 ecbuild/3.8.0 ecmwf-toolbox/new
+
+For a GNU build:
+
+    module load prgenv/gnu gcc/new cmake/3.25 ninja/1.11.1 hpcx-openmpi/2.9 netcdf4/new ecbuild/3.8.0 ecmwf-toolbox/new
+
+Download from Github:
+
+    git clone git@github.com:ecmwf-ifs/ecland --branch 2.0.0
+
+Configure and build:
+
+    cmake -S ecland -B ecland-build -G Ninja
+    cmake --build ecland-build
+
+#### Quick instructions for macOS
+
+The recommended way to install prerequisites on macOS is via [Homebrew](https://brew.sh):
+
+    brew install cmake ninja open-mpi netcdf eccodes python
+
+`ecbuild` and `fiat` will be automatically fetched and built if not already present. Then:
+
+    git clone https://github.com/ecmwf-ifs/ecland --branch 2.0.0
+    cd ecland
+    cmake -S . -B ecland-build -G Ninja
+    cmake --build ecland-build --parallel $(sysctl -n hw.logicalcpu)
+
+If ecbuild, fiat or eccodes are installed in non-standard locations, point CMake to them via the environment variables listed in the "General instructions" section below before running `cmake`.
+
+#### General instructions for manual installation
+
+The ecLand v2.0.0 build system is based on CMake directly (without the ecbundle wrapper). If CMake has issues detecting required software dependencies, define the following environment variables before configuring:
+
+    export ecbuild_ROOT=<path-to-ecbuild>
+    export MPI_HOME=<path-to-MPI>
+    export fiat_ROOT=<path-to-fiat>
+    export eccodes_ROOT=<path-to-eccodes>
+    export NetCDF_Fortran_ROOT=<path-to-netcdf-fortran>
+    export CC=<path-to-C-compiler>
+    export FC=<path-to-Fortran-compiler>
+    export CXX=<path-to-C++-compiler>
+
+The following CMake options control the build (defaults shown in **bold**):
+
+- `-DCMAKE_BUILD_TYPE=<Debug|**RelWithDebInfo**|Release|Bit>` : Build type (default: `RelWithDebInfo`, typically `-O2 -g`)
+- `-DENABLE_TESTS=<**ON**|OFF>` : Enable/disable tests
+- `-DENABLE_MPI=<**ON**|OFF>` : Enable/disable MPI distributed memory parallelism
+- `-DENABLE_OMP=<**ON**|OFF>` : Enable/disable OpenMP threaded parallelism
+- `-DENABLE_SINGLE_PRECISION=<ON|**OFF**>` : Enable single-precision build
+- `-DCMAKE_INSTALL_PREFIX=<install-prefix>` : Install location
+- `-DFETCHCONTENT_DEPENDENCIES=<ON|OFF>` : Download and compile missing dependencies (eccodes, fiat) automatically
+
+Additional compiler flag options:
+
+- `-DOpenMP_Fortran_FLAGS=<flags>`
+- `-DCMAKE_Fortran_FLAGS=<fortran-flags>`
+- `-DCMAKE_C_FLAGS=<c-flags>`
+
+Once the environment is configured, perform the build as follows:
+
+1. Configure ecland:
+
+    cmake -S `<path-to-source>` -B `<path-to-build>`
+
+2. Build ecland:
+
+    cmake --build `<path-to-build>` --parallel `<nthreads>`
+
+3. Install ecland:
+
+    cmake --install `<path-to-build>` --parallel `<nthreads>`
+
+
+#### Testing ecLand
+
+Tests can be run to check successful compilation or bit-identical contributions, when the feature TESTS is enabled (`-DENABLE_TESTS=ON`, default ON).
+In the build folder (e.g. `ecland-build`), run:
+
+    ctest -R ecland [-VV]
+
+An informational tool `ecland [--help] [--info] [--version] [--git]` is available after compilation and can be used to verify compilation options and version information.
 
 
 Running ecLand

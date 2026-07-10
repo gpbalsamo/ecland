@@ -105,7 +105,7 @@
     LEINTWIND=.T.
     LESNML=.TRUE.
     LECMF1WAY=.F.    ! Logical : Turn on Coupling with CaMa-Flood
-    LECMF2LAKEC=0 ! Integer: 2way coupling : 0 -> off, 1 -> replace , 2 -> add
+    NCMF2LAKEC=0 ! Integer: 2way coupling : 0 -> off, 1 -> replace , 2 -> add
     LESSDP_CALIB=false ! Logical : Turn on the calibration of the surface spatially distributed parameters 
   /
   &NAMOPTSURF
