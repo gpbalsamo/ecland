@@ -12,7 +12,7 @@ projects :
 
     - ecbuild :
         git     : https://github.com/ecmwf/ecbuild
-        version : 3.11.0
+        version : develop
         bundle  : false
 
     - eccodes :
@@ -31,6 +31,14 @@ projects :
         git     : https://github.com/ecmwf-ifs/fiat
         version : 1.6.2
         cmake   : ENABLE_DR_HOOK_NVTX=OFF
+
+
+    - field_api :
+        git     : https://github.com/ecmwf-ifs/field_api
+        version : main
+        require : ecbuild
+        cmake   : >
+            ENABLE_ACC=OFF
 
     - ecland :
         dir     : $PWD

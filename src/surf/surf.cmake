@@ -17,6 +17,7 @@ list( APPEND module_src
     cotworestress_mod.F90
     cptave_mod.F90
     farquhar_mod.F90
+    fcz0wn_mod.F90
     flake_driver_mod.F90
     flakeene_mod.F90
     flakerad_mod.F90
@@ -73,6 +74,7 @@ list( APPEND module_src
     srfsn_ssrabss_mod.F90
     srfsn_ssrabssad_mod.F90
     srfsn_ssrabsstl_mod.F90
+    srfsn_trisolver_mod.F90
     srfsn_vgrid_mod.F90
     srfsn_webal_mod.F90
     srfsn_webals_mod.F90
@@ -211,17 +213,27 @@ list(APPEND external_src
 )
 list(TRANSFORM external_src PREPEND external/)
 
-ecbuild_add_library( TARGET ${PROJECT_NAME}_surf 
-    SOURCES ${module_src}
-            offline/driver/ibm.F90 # dummies for IBM vmass library
-            ${external_src}
-    PUBLIC_LIBS fiat parkind
-    PRIVATE_LIBS ${OpenMP_Fortran_LIBRARIES}
-    PRIVATE_INCLUDES function
-)
+foreach( prec sp dp )
+  if( HAVE_${prec} )
+     ecbuild_add_library( TARGET ${PROJECT_NAME}_surf_${prec}
+         SOURCES ${module_src}
+                 offline/driver/ibm.F90 # dummies for IBM vmass library
+                 ${external_src}
+         PUBLIC_LIBS fiat parkind_${prec}
+         PRIVATE_LIBS ${OpenMP_Fortran_LIBRARIES}
+         PRIVATE_INCLUDES function
+     )
 
-ecbuild_target_fortran_module_directory(
-    TARGET ${PROJECT_NAME}_surf
-    MODULE_DIRECTORY         ${CMAKE_BINARY_DIR}/module/${PROJECT_NAME}
-    INSTALL_MODULE_DIRECTORY module/${PROJECT_NAME}
-)
+     install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/interface DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}_${prec}_includes)
+     target_include_directories( ${PROJECT_NAME}_surf_${prec}
+                                 INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/interface>
+                                 INTERFACE $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}_${prec}_includes/interface>
+                               )
+
+     ecbuild_target_fortran_module_directory(
+         TARGET ${PROJECT_NAME}_surf_${prec}
+         MODULE_DIRECTORY         ${CMAKE_BINARY_DIR}/module/${PROJECT_NAME}_${prec}
+         INSTALL_MODULE_DIRECTORY module/${PROJECT_NAME}_${prec}
+     )
+  endif()
+endforeach()
