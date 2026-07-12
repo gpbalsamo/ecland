@@ -268,7 +268,9 @@ IF (NACCTYPE.eq.2) THEN
 !                  ZZT=MOD(NINT((IFFF-1)*DTIMFC+(JK-1)*TSTEP+(JKK-1)*TSTEP/3),NINT(RDAY))
 !                ZTT calculation assumes forcing starts at 00:00, if not we should add here that !!!
                   ZZT=MOD(NINT(ABS(RTSTFC)+(IFFF-1)*DTIMFC+(JK-1)*TSTEP+(JKK-1)*TSTEP/3),NINT(RDAY))
-                 WRITE(NULOUT,"('ZT=',F14.2,' ZTT=',F14.2,' jk',I6,' jkk=',I6)") ZT,ZZT,JK,JKK
+                 IF ( IDBGS1 > 1 ) THEN
+                   WRITE(NULOUT,"('ZT=',F14.2,' ZTT=',F14.2,' jk',I6,' jkk=',I6)") ZT,ZZT,JK,JKK
+                 ENDIF
 !                 print *,"ZT=", ZT,"ZZT=",ZZT,JK,JKK
                 ZHGMT=REAL(ZZT,KIND=JPRD)
                 ZEQTIMM=RET(ZTETA)
@@ -686,7 +688,9 @@ ELSE
   IYYYY=MIN(MAX(1,YYYY-RCO2REFYEAR+1),RNCO2YEARS)
 
   ZCO2=RANCO2(IYYYY)
-  WRITE(NULOUT,*) ' ***** ATMOSPHERIC CO2:',ZCO2
+  IF ( IDBGS1 > 1 ) THEN
+     WRITE(NULOUT,*) ' ***** ATMOSPHERIC CO2:',ZCO2
+  ENDIF
 
   CNLEV0(:,:,:)=ZCO2*RMCO2/(RMD*1000000._JPRB)
   CNLEV1(:,:,:)=ZCO2*RMCO2/(RMD*1000000._JPRB)
