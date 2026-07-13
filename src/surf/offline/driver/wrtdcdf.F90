@@ -315,7 +315,7 @@ ENDWHERE
 
 !* calculation of root zone soil moisture content: all liquid water
 !  above wilting point in layers where roots are found
-!$OMP PARALLEL DO PRIVATE(IST,IEND,IBL,IPROMA,IL,JL,JK)
+!$OMP PARALLEL DO PRIVATE(IST,IEND,IBL,IPROMA,IL,JL,JK,ZCVL,ZCVH,ZWPWP)
 DO IST = 1, NPOI, NPROMA
   IEND = MIN(IST+NPROMA-1,NPOI)
   IBL = (IST-1)/NPROMA + 1
@@ -345,7 +345,7 @@ ENDDO
 !$OMP END PARALLEL DO
 
 !* calculation of depth of frozen ground and thaw layer
-!$OMP PARALLEL DO PRIVATE(IST,IEND,IBL,IPROMA,IL,JL,JK,ZTOP)
+!$OMP PARALLEL DO PRIVATE(IST,IEND,IBL,IPROMA,IL,JL,JK,ZTOP,ZBOT,ZF)
 DO IST = 1, NPOI, NPROMA
   IEND = MIN(IST+NPROMA-1,NPOI)
   IBL = (IST-1)/NPROMA + 1

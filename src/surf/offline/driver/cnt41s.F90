@@ -312,7 +312,7 @@ DO NSTEP=NSTART,NSTOP
         IF (NCMF2LAKEC==1) THEN 
 
         ! replace lake cover by flood plain fraction over land 
-        !$OMP PARALLEL DO PRIVATE(IST,IEND,IBL)
+        !$OMP PARALLEL DO PRIVATE(IST,IEND,IBL,JL,IL)
         DO IST = 1, NPOI, NPROMA
           IEND = MIN(IST+NPROMA-1,NPOI)
           IBL = (IST-1)/NPROMA + 1
@@ -329,7 +329,7 @@ DO NSTEP=NSTART,NSTOP
         ELSEIF (NCMF2LAKEC==2) THEN 
 
         ! add flooplain fraction to lake cover over land 
-        !$OMP PARALLEL DO PRIVATE(IST,IEND,IBL)
+        !$OMP PARALLEL DO PRIVATE(IST,IEND,IBL,JL,IL)
         DO IST = 1, NPOI, NPROMA
           IEND = MIN(IST+NPROMA-1,NPOI)
           IBL = (IST-1)/NPROMA + 1
