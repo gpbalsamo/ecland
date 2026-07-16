@@ -18,9 +18,9 @@ SUBROUTINE SURFDEALLO(YDSURF)
 !     ----------
 !        *CALL* *SURFDEALLO*
 
-!     Explicit arguments :  None
+!     Explicit arguments :
 !     --------------------
-!        Called by DEALLO
+!        YDSURF : surface metadata object (unused; kept for API consistency)
 
 !     Implicit arguments :
 !     --------------------
@@ -47,12 +47,11 @@ SUBROUTINE SURFDEALLO(YDSURF)
 !     ------------------------------------------------------------------
 
 USE PARKIND1, ONLY : JPIM, JPRB
-USE ISO_C_BINDING
+USE YOS_SURF, ONLY : TSURF
 
 !ifndef INTERFACE
 
 USE YOMHOOK,  ONLY : LHOOK, DR_HOOK, JPHOOK
-USE YOS_SURF, ONLY : TSURF, DEALLO_SURF
 
 !endif INTERFACE
 
@@ -60,13 +59,11 @@ IMPLICIT NONE
 
 ! Declaration of arguments
 
-TYPE(C_PTR), INTENT(INOUT) :: YDSURF
-
+TYPE(TSURF)       ,INTENT(INOUT) :: YDSURF
 !ifndef INTERFACE
 
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 IF (LHOOK) CALL DR_HOOK('SURFDEALLO',0,ZHOOK_HANDLE)
-CALL DEALLO_SURF(YDSURF)
 IF (LHOOK) CALL DR_HOOK('SURFDEALLO',1,ZHOOK_HANDLE)
 
 !endif INTERFACE

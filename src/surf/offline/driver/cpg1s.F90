@@ -6,8 +6,9 @@ SUBROUTINE CPG1S
 ! In applying this licence, ECMWF does not waive the privileges and immunities
 ! granted to it by virtue of its status as an intergovernmental organisation
 ! nor does it submit to any jurisdiction.
-USE YOMDPHY  ,  ONLY : YSURF, NCOM, NCSNEC, NCSS, NTILES, NTRAC, &
+USE YOMDPHY  ,  ONLY : NCOM, NCSNEC, NCSS, NTILES, NTRAC, &
       &                NVHILO, NGPP, NPOI, NLEV, NBLOCKS
+USE YOS_SURF ,  ONLY : YSURF
 USE YOMCDH1S ,  ONLY : NLEVI, NDHFCO2S , &
       &                NDHVSSS, NDHFSSS, NDHVIIS, NDHFIIS, &
       &                NDHVWLS, NDHFWLS, NDHVRESS, NDHFRESS, &

@@ -19,9 +19,9 @@ SUBROUTINE SURFDEALLO(YDSURF)
 !     ----------
 !        *CALL* *SURFDEALLO*
 
-!     Explicit arguments :  None
+!     Explicit arguments :
 !     --------------------
-!        Called by DEALLO
+!        YDSURF : surface metadata object (unused; kept for API consistency)
 
 !     Implicit arguments :
 !     --------------------
@@ -48,14 +48,13 @@ SUBROUTINE SURFDEALLO(YDSURF)
 !     ------------------------------------------------------------------
 
 USE PARKIND1, ONLY : JPIM, JPRB
-USE, INTRINSIC :: ISO_C_BINDING
+USE YOS_SURF, ONLY : TSURF
 
 IMPLICIT NONE
 
 ! Declaration of arguments
 
-TYPE(C_PTR), INTENT(INOUT) :: YDSURF
-
+TYPE(TSURF)       ,INTENT(INOUT) :: YDSURF
 !     ------------------------------------------------------------------
 
 END SUBROUTINE SURFDEALLO
