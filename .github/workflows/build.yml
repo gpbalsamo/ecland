@@ -286,7 +286,7 @@ jobs:
           -DENABLE_TESTS=OFF
           -DENABLE_DR_HOOK_NVTX=OFF
           -DENABLE_MPI=ON
-          -DENABLE_SINGLE_PRECISION=${{ matrix.compiler == 'flang-20' && 'OFF' || 'ON' }}
+          -DENABLE_SINGLE_PRECISION=ON
           -DENABLE_DOUBLE_PRECISION=ON
 
           ecmwf-ifs/field_api:
@@ -294,7 +294,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DENABLE_TESTS=OFF
           -DENABLE_MPI=ON
-          -DENABLE_SINGLE_PRECISION=${{ matrix.compiler == 'flang-20' && 'OFF' || 'ON' }}
+          -DENABLE_SINGLE_PRECISION=ON
           -DENABLE_DOUBLE_PRECISION=ON
           -DENABLE_ACC=OFF
           ${{ env.FC_FLAGS_CMAKE }}
@@ -302,7 +302,7 @@ jobs:
         cmake_options: >-
           -G Ninja
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DENABLE_SINGLE_PRECISION=${{ matrix.compiler == 'flang-20' && 'OFF' || 'ON' }}
+          -DENABLE_SINGLE_PRECISION=ON
           -DENABLE_DOUBLE_PRECISION=ON
           ${{ matrix.cmake_options }}
           ${{ env.FC_FLAGS_CMAKE }}
