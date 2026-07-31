@@ -269,7 +269,7 @@ jobs:
         recreate_cache: ${{ !matrix.caching }}
         dependencies: |
           ecmwf/ecbuild@develop
-          ecmwf-ifs/fiat@refs/tags/1.6.2
+          ecmwf-ifs/fiat@develop
           ecmwf-ifs/field_api@main
           ecmwf/eccodes@refs/tags/2.44.0
         dependency_cmake_options: >-
