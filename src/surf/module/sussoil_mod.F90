@@ -131,6 +131,17 @@ RQSNCR =1.0_JPRB/RQSNCRINV
 LEVGEN=LD_LEVGEN
 LESSRO=LD_LESSRO
 
+! Prototype additive soil water-vapour flux (see SRFWVAPOR_MOD): off by
+! default, not yet threaded through the namelist -- flip to .TRUE. here
+! to build the "ecLand + vapour term" test configuration.
+YDSOIL%LEVAPSOIL=.TRUE.
+
+! Prototype: floor the VG hydraulic conductivity/diffusivity lookup at
+! wilting point instead of residual moisture (see SRFWEXC_VG) -- flip to
+! .TRUE. here to build the "ecLand + wilting-point floor" test
+! configuration. Independent of LEVAPSOIL above -- test separately first.
+YDSOIL%LEWPFLOOR=.TRUE.
+
 !    SNOW LOGICALS
 
 LESN09=LD_LESN09
