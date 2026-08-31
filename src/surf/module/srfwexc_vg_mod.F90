@@ -198,6 +198,7 @@ REAL(KIND=JPRB) :: Z_RHOH20, ZD, &
  & ZRSFL, ZROEFF, ZSIGOR, ZBWS, ZB1, ZBM, ZWMAX, ZWMIN, &
  & ZCONW1, ZLYEPS, ZLYSIC, ZVOL, ZROS, ZSUM, ZLIMRS, ZWSATM, ZWRESTM, ZWFAC_S, ZWK ,ZWMK, &
  & ZWFLOOR, ZSEWP, ZKWPFLOOR, ZTOTAL_DEPTH, ZBEDROCKFAC
+REAL(KIND=JPRB), PARAMETER :: RZBEDROCK_MIN=1.0_JPRB ! floor for RDBEDROCK, see LEBEDROCKLIM below
 REAL(KIND=JPRD) :: ZDD, ZKD, ZSE, ZSEMAX, ZDMAX_D, ZSEMIN, ZDMIN_D
 
 REAL(KIND=JPRB) :: ZFRK(KLON,KLEVS)
@@ -629,15 +630,22 @@ DO JK=2,KLEVS_WB
           
       IF (JK == KLEVS_WB) ZD=0.0_JPRB
 
-! Prototype: taper the bottom layer's free-drainage conductivity towards
-! zero once the modelled profile depth reaches the real depth to bedrock,
-! instead of draining freely into rock the model doesn't represent. See
-! LEBEDROCKLIM/RDBEDROCK in yos_soil.F90. No effect above bedrock (factor
-! clamped to 1), and no effect at any layer above the bottom one.
-      IF (JK == KLEVS_WB .AND. YDSOIL%LEBEDROCKLIM) THEN
-        ZTOTAL_DEPTH=SUM(RDAW(1:KLEVS_WB))
+! Prototype: taper this layer's downward conductivity towards zero once
+! its own cumulative depth reaches the real depth to bedrock, instead of
+! draining freely into rock the model doesn't represent. See
+! LEBEDROCKLIM/RDBEDROCK in yos_soil.F90. Evaluated per-layer (not just at
+! the bottom one) so a shallow RDBEDROCK that cuts through an intermediate
+! layer tapers that layer's outflow directly, rather than being
+! indistinguishable from "just past the bottom layer's own start depth".
+! Layers entirely above bedrock get factor 1 (no effect). RDBEDROCK is
+! floored at 1m (RZBEDROCK_MIN) before use: below that, treat the reading
+! as unreliable (e.g. a noisy BDTICM pixel) rather than let a single bad
+! value fully shut off drainage -- 1m still leaves the top 1-2 layers of
+! every discretization tested (4/9/10/14) free-draining regardless.
+      IF (YDSOIL%LEBEDROCKLIM) THEN
+        ZTOTAL_DEPTH=SUM(RDAW(1:JK))
         ZBEDROCKFAC=MAX(0.0_JPRB,MIN(1.0_JPRB, &
-         & (YDSOIL%RDBEDROCK-ZTOTAL_DEPTH+RDAW(KLEVS_WB))/RDAW(KLEVS_WB)))
+         & (MAX(YDSOIL%RDBEDROCK,RZBEDROCK_MIN)-ZTOTAL_DEPTH+RDAW(JK))/RDAW(JK)))
         ZK=ZK*ZBEDROCKFAC
       ENDIF
 
