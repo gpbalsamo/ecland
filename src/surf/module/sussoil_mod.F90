@@ -164,23 +164,30 @@ YDSOIL%RDMAXROOT=-1.0_JPRB
 ! Prototype: taper free-drainage conductivity at the bottom layer towards
 ! zero once the modelled profile depth reaches the real depth to bedrock
 ! (see SRFWEXC_VG). RDBEDROCK is a single global scalar for now, not yet
-! per-gridpoint -- set here to AU-Tum's own Shangguan et al. (2017) value
-! (2.62 m) so the very first test (4-layer profile = 2.89 m, already past
-! bedrock there) has an immediate, real effect to check. Independent of
-! the switches above -- test separately first.
-! AU-Tum verification (this RDBEDROCK, 4-layer): deepest layer's mean
-! SoilMoist moved 683->690 kg/m2 (small, expected -- ZWCONS is rarely the
-! rate-limiting flux, so a ~14% conductivity taper barely registers). An
-! exaggerated RDBEDROCK=1.0m (full shutoff) confirmed the mechanism is
-! correctly wired: deepest layer backed up to near-saturation (683->826
-! kg/m2). That test also surfaced a real interpretation trap: ecLand's
-! exported Qsb diagnostic is the LESSRO/VIC-style saturation-excess
-! subsurface runoff, NOT literally "flux out the bottom of the profile" --
-! blocking bottom drainage makes Qsb go UP (more saturation-excess runoff
-! once the profile backs up), not down. Don't use Qsb alone to judge this
-! switch's effect; check layer-resolved SoilMoist instead.
+! per-gridpoint. Unlike RDMAXROOT above, there's no analogous way to derive
+! a meaningful per-vegetation/per-texture bedrock depth from quantities
+! ecLand already has -- depth to bedrock is a genuinely external physical
+! fact, not inferable from soil texture class or vegetation type the way
+! rooting depth could be inferred from the existing Zeng profile. So the
+! safe "no data available" default here is different in kind: deep enough
+! to be inert everywhere, reproducing today's unconstrained free-drainage
+! behaviour, rather than guessing a plausible-looking shallow value with no
+! real basis. 100m clears every discretisation tested this session,
+! including the deepest (14-layer, 12m column).
+! AU-Tum verification (RDBEDROCK=2.62m, its own real Shangguan et al. 2017
+! value, 4-layer): deepest layer's mean SoilMoist moved 683->690 kg/m2
+! (small, expected -- ZWCONS is rarely the rate-limiting flux, so a ~14%
+! conductivity taper barely registers). An exaggerated RDBEDROCK=1.0m (full
+! shutoff) confirmed the mechanism is correctly wired: deepest layer backed
+! up to near-saturation (683->826 kg/m2). That test also surfaced a real
+! interpretation trap: ecLand's exported Qsb diagnostic is the LESSRO/VIC-
+! style saturation-excess subsurface runoff, NOT literally "flux out the
+! bottom of the profile" -- blocking bottom drainage makes Qsb go UP (more
+! saturation-excess runoff once the profile backs up), not down. Don't use
+! Qsb alone to judge this switch's effect; check layer-resolved SoilMoist
+! instead. To reproduce that test, override RDBEDROCK=2.62_JPRB here.
 YDSOIL%LEBEDROCKLIM=.TRUE.
-YDSOIL%RDBEDROCK=2.62_JPRB
+YDSOIL%RDBEDROCK=100.0_JPRB
 
 !    SNOW LOGICALS
 
