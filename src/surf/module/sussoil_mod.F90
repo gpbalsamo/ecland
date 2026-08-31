@@ -189,6 +189,15 @@ YDSOIL%RDMAXROOT=-1.0_JPRB
 YDSOIL%LEBEDROCKLIM=.TRUE.
 YDSOIL%RDBEDROCK=100.0_JPRB
 
+! Prototype: Gardner (1958)-type capillary-rise recharge from the water
+! table into every layer above it (see SRFGWRECHARGE_MOD). Same "no data
+! available" logic as RDBEDROCK above: depth to water table is a genuinely
+! external fact, so the safe default is deep enough to be inert (100m)
+! rather than a guessed shallow value. Independent of the switches above --
+! test separately first.
+YDSOIL%LEGWRECHARGE=.TRUE.
+YDSOIL%RWTD=100.0_JPRB
+
 !    SNOW LOGICALS
 
 LESN09=LD_LESN09
