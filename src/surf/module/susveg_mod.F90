@@ -79,10 +79,11 @@ TYPE(TCST),      INTENT(IN)    :: YDCST
 TYPE(TSOIL),     INTENT(IN)    :: YDSOIL
 TYPE(TVEG),      INTENT(INOUT) :: YDVEG
 
-INTEGER(KIND=JPIM) ::  ITILES, IVTYPES, JS
+INTEGER(KIND=JPIM) ::  ITILES, IVTYPES, JS, JT
 INTEGER(KIND=JPIM) ::  KLEVS_WB
 REAL(KIND=JPRB),ALLOCATABLE :: ZRDAW(:)
 REAL(KIND=JPRB)    :: ZLARGE, ZSNOW, ZCONV
+REAL(KIND=JPRB)    :: ZDEPTH_LOWER, ZDEPTH_UPPER
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
 !     ------------------------------------------------------------------
@@ -90,6 +91,7 @@ REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 IF (LHOOK) CALL DR_HOOK('SUSVEG_MOD:SUSVEG',0,ZHOOK_HANDLE)
 ASSOCIATE(RETV=>YDCST%RETV, &
  & NCSS=>YDDIM%NCSS, NTILES=>YDDIM%NTILES, RDAW=>YDSOIL%RDAW, &
+ & LEUNIFORMROOT=>YDSOIL%LEUNIFORMROOT, RDMAXROOT=>YDSOIL%RDMAXROOT, &
  & LEAGS=>YDVEG%LEAGS,LEAIRCO2COUP=>YDVEG%LEAIRCO2COUP,LECTESSEL=>YDVEG%LECTESSEL, &
  & LEFARQUHAR=>YDVEG%LEFARQUHAR, LELAIV=>YDVEG%LELAIV, &
  & NVTILES=>YDVEG%NVTILES, NVTYPES=>YDVEG%NVTYPES, &
@@ -284,6 +286,31 @@ ZRDAW(1:KLEVS_WB)=RDAW(1:KLEVS_WB)
 
 IF(.NOT.ALLOCATED(YDVEG%RVROOTSA)) ALLOCATE(YDVEG%RVROOTSA(NCSS,0:NVTYPES))
 IF (NCSS >= 1) CALL SRFROOTFR(KLEVS_WB,NVTYPES,ZRDAW(1:KLEVS_WB),YDVEG%RVROOTSA(:,1:NVTYPES))
+
+! Prototype: Stevens et al. (2020, Atmosphere, Eq. 5) uniform-to-RDMAXROOT
+! root fraction instead of the Zeng et al. (1998) double-exponential -- see
+! LEUNIFORMROOT/RDMAXROOT in yos_soil.F90. Rk = max(0,min(RDMAXROOT,lower)-
+! upper)/RDMAXROOT, i.e. uniform root density down to RDMAXROOT, zero below
+! it. Leaves the "odd" zero-root-depth types (desert, ice, water, ...)
+! untouched since SRFROOTFR already zeroed everything below layer 1 for those.
+IF (LEUNIFORMROOT) THEN
+  DO JT=1,NVTYPES
+    ! Only touch "normal" vegetated types (nonzero root fraction below layer
+    ! 1); leave the odd zero-root-depth types (desert, ice, water, ...) as
+    ! SRFROOTFR set them, i.e. entirely in layer 1.
+    IF (KLEVS_WB > 1) THEN
+      IF (ANY(YDVEG%RVROOTSA(2:KLEVS_WB,JT) > 0.0_JPRB)) THEN
+        ZDEPTH_LOWER=0.0_JPRB
+        DO JS=1,KLEVS_WB
+          ZDEPTH_UPPER=ZDEPTH_LOWER
+          ZDEPTH_LOWER=ZDEPTH_UPPER+ZRDAW(JS)
+          YDVEG%RVROOTSA(JS,JT)=MAX(0.0_JPRB,MIN(RDMAXROOT,ZDEPTH_LOWER)-ZDEPTH_UPPER)/RDMAXROOT
+        ENDDO
+      ENDIF
+    ENDIF
+  ENDDO
+ENDIF
+
 DO JS=1,NCSS
   YDVEG%RVROOTSA(JS,0)=YDVEG%RVROOTSA(JS,8)
 ENDDO

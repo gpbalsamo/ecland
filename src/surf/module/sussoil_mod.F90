@@ -142,6 +142,22 @@ YDSOIL%LEVAPSOIL=.TRUE.
 ! configuration. Independent of LEVAPSOIL above -- test separately first.
 YDSOIL%LEWPFLOOR=.TRUE.
 
+! Prototype: floor the frozen-fraction hydraulic conductivity at the same
+! wilting-point value as LEWPFLOOR, instead of letting it blend to zero as
+! ice fraction -> 1 (see SRFWEXC_VG, the LLFREEZ blocks). Independent of
+! LEWPFLOOR/LEVAPSOIL above -- test separately first.
+YDSOIL%LEFRZFLOOR=.TRUE.
+
+! Prototype: replace the default Zeng et al. (1998) double-exponential root
+! fraction with the Stevens et al. (2020) uniform-to-RDMAXROOT one (see
+! SUSVEG). Independent of the switches above -- test separately first.
+! RDMAXROOT=1.0 matches the middle of Stevens et al.'s own tested range
+! (0.5/1/2/3 m) -- a single global scalar for now; AU-DaS testing swept
+! 0.5-10 m and found deeper values trade NEE skill for Qle/Qh skill (see
+! session notes), so treat this default as a placeholder, not a calibration.
+YDSOIL%LEUNIFORMROOT=.TRUE.
+YDSOIL%RDMAXROOT=1.0_JPRB
+
 !    SNOW LOGICALS
 
 LESN09=LD_LESN09
@@ -183,39 +199,8 @@ DO I=1,NCSS
   YDSOIL%RDAI(I)=YDSOIL%RDAT(I)
 ENDDO
 
-!------------------------------------------------------------!
-! 9-layers definition in cm (for a total depth of 300 cm)
-!-----------!-------------!--------------!-------------------!
-!thichness      mid-point    upper-bound     lower-bound
-!-----------!-------------!--------------!-------------------!
-!   1.0            0.5           0.0            1.0
-!   2.0            2.5           1.0            3.0
-!   4.0            4.5           3.0            7.0
-!   8.0           11.0           7.0           15.0
-!  10.0           16.0          15.0           25.0
-!  25.0           37.5          25.0           50.0
-!  50.0           75.0          50.0          100.0
-! 100.0          150.0         100.0          200.0  
-! 100.0          250.0         200.0          300.0
-IF (NCSS == 9) THEN 
-  YDSOIL%RDAT(1)=0.01_JPRB   
-  YDSOIL%RDAT(2)=0.02_JPRB
-  YDSOIL%RDAT(3)=0.04_JPRB
-  YDSOIL%RDAT(4)=0.08_JPRB
-  YDSOIL%RDAT(5)=0.10_JPRB
-  YDSOIL%RDAT(6)=0.25_JPRB
-  YDSOIL%RDAT(7)=0.50_JPRB
-  YDSOIL%RDAT(8)=1.00_JPRB
-  YDSOIL%RDAT(9)=1.00_JPRB
-  DO I=1,NCSS
-    YDSOIL%RDAW(I)=YDSOIL%RDAT(I)
-    YDSOIL%RDAI(I)=MIN(YDSOIL%RDAT(I),0.25_JPRB)
-  ENDDO
-ENDIF
-
-
 !-----------------------------------------------------------------!
-! 10-layers definition in cm (for a total depth of 800 cm)
+! 9-layers definition in cm (for a total depth of 289 cm)
 !-----------!---------------!-----------------!-------------------!
 !layer   thichness      mid-point    upper-bound     lower-bound
 !-----!----------!-------------!--------------!-------------------!
@@ -226,27 +211,107 @@ ENDIF
 ! 5     12.0           22.0          16.0           28.0
 ! 6     30.0           43.0          28.0           58.0
 ! 7     42.0           79.0          58.0          100.0
-! 8    100.0          150.0         100.0          200.0                         
-! 9    200.0          300.0         200.0          400.0
-!10    400.0          600.0         400.0          800.0
-!-----!----------!-------------!--------------!-------------------!
-
-IF (NCSS == 10) THEN 
-  YDSOIL%RDAT(1)=0.01_JPRB   
+! 8     89.0          144.5         100.0          189.0
+! 9    100.0          239.0         189.0          289.0
+!-----------!-------------!--------------!-------------------!
+IF (NCSS == 9) THEN
+  YDSOIL%RDAT(1)=0.01_JPRB
   YDSOIL%RDAT(2)=0.02_JPRB
   YDSOIL%RDAT(3)=0.04_JPRB
   YDSOIL%RDAT(4)=0.09_JPRB
   YDSOIL%RDAT(5)=0.12_JPRB
   YDSOIL%RDAT(6)=0.30_JPRB
   YDSOIL%RDAT(7)=0.42_JPRB
-  YDSOIL%RDAT(8)=1.00_JPRB
-  YDSOIL%RDAT(9)=2.00_JPRB
-  YDSOIL%RDAT(10)=4.00_JPRB
+  YDSOIL%RDAT(8)=0.89_JPRB
+  YDSOIL%RDAT(9)=1.00_JPRB
   DO I=1,NCSS
     YDSOIL%RDAW(I)=YDSOIL%RDAT(I)
-    YDSOIL%RDAI(I)=MIN(YDSOIL%RDAT(I),0.25_JPRB)
+    YDSOIL%RDAI(I)=YDSOIL%RDAT(I)
+!   YDSOIL%RDAI(I)=MIN(YDSOIL%RDAT(I),0.25_JPRB)
   ENDDO
 ENDIF
+
+
+!-----------------------------------------------------------------!
+! 10-layers definition in cm (for a total depth of 500 cm)
+!-----------!---------------!-----------------!-------------------!
+!layer   thichness      mid-point    upper-bound     lower-bound
+!-----!----------!-------------!--------------!-------------------!
+! 1      1.0            0.5           0.0            1.0
+! 2      2.0            2.0           1.0            3.0
+! 3      4.0            5.0           3.0            7.0
+! 4      9.0           11.5           7.0           16.0
+! 5     12.0           22.0          16.0           28.0
+! 6     30.0           43.0          28.0           58.0
+! 7     42.0           79.0          58.0          100.0
+! 8     89.0          144.5         100.0          189.0
+! 9    100.0          239.0         189.0          289.0
+!10    211.0          394.5         289.0          500.0
+!-----!----------!-------------!--------------!-------------------!
+
+IF (NCSS == 10) THEN
+  YDSOIL%RDAT(1)=0.01_JPRB
+  YDSOIL%RDAT(2)=0.02_JPRB
+  YDSOIL%RDAT(3)=0.04_JPRB
+  YDSOIL%RDAT(4)=0.09_JPRB
+  YDSOIL%RDAT(5)=0.12_JPRB
+  YDSOIL%RDAT(6)=0.30_JPRB
+  YDSOIL%RDAT(7)=0.42_JPRB
+  YDSOIL%RDAT(8)=0.89_JPRB
+  YDSOIL%RDAT(9)=1.00_JPRB
+  YDSOIL%RDAT(10)=2.11_JPRB
+  DO I=1,NCSS
+    YDSOIL%RDAW(I)=YDSOIL%RDAT(I)
+    YDSOIL%RDAI(I)=YDSOIL%RDAT(I)
+!   YDSOIL%RDAI(I)=MIN(YDSOIL%RDAT(I),0.25_JPRB)
+  ENDDO
+ENDIF
+
+!-----------------------------------------------------------------!
+! 14-layers definition in cm (for a total depth of 1200 cm)
+! Inspired by ISBA-DF depths of the 14 layers (Decharme et al 2019)
+! 0.01 0.04 0.10 0.20 0.40 0.60 0.80 1.00 1.50 2.00 3.00 5.00 8.00 12.0
+! https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2018MS001545
+!-----------!---------------!-----------------!-------------------!
+!layer   thichness      mid-point    upper-bound     lower-bound
+!-----!----------!-------------!--------------!-------------------!
+! 1      1.0            0.5           0.0            1.0
+! 2      2.0            2.0           1.0            3.0
+! 3      4.0            5.0           3.0            7.0
+! 4      9.0           11.5           7.0           16.0
+! 5     12.0           22.0          16.0           28.0
+! 6     30.0           43.0          28.0           58.0
+! 7     42.0           79.0          58.0          100.0
+! 8     50.0          125.0         100.0          150.0
+! 9     50.0          175.0         150.0          200.0
+!10     89.0          244.5         200.0          289.0
+!11    111.0          344.5         289.0          400.0
+!12    100.0          450.0         400.0          500.0
+!13    300.0          650.0         500.0          800.0
+!14    400.0         1000.0         800.0         1200.0
+!-----!----------!-------------!--------------!-------------------!
+IF (NCSS == 14) THEN
+  YDSOIL%RDAT(1)=0.01_JPRB
+  YDSOIL%RDAT(2)=0.02_JPRB
+  YDSOIL%RDAT(3)=0.04_JPRB
+  YDSOIL%RDAT(4)=0.09_JPRB
+  YDSOIL%RDAT(5)=0.12_JPRB
+  YDSOIL%RDAT(6)=0.30_JPRB
+  YDSOIL%RDAT(7)=0.42_JPRB
+  YDSOIL%RDAT(8)=0.50_JPRB
+  YDSOIL%RDAT(9)=0.50_JPRB
+  YDSOIL%RDAT(10)=0.89_JPRB
+  YDSOIL%RDAT(11)=1.11_JPRB
+  YDSOIL%RDAT(12)=1.00_JPRB
+  YDSOIL%RDAT(13)=3.00_JPRB
+  YDSOIL%RDAT(14)=4.00_JPRB
+  DO I=1,NCSS
+    YDSOIL%RDAW(I)=YDSOIL%RDAT(I)
+    YDSOIL%RDAI(I)=YDSOIL%RDAT(I)
+!   YDSOIL%RDAI(I)=MIN(YDSOIL%RDAT(I),0.25_JPRB)
+  ENDDO
+ENDIF
+
 !     CONSTANTS FOR HYDRAULIC DIFFUSIVITY AND HYDRAULIC CONDUCTIVITY
 !GPB IF (LEVGEN) THEN
 ! VAN GENUCHTEN (MV) HYDROLOGY
