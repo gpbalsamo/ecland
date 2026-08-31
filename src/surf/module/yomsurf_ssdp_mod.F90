@@ -44,13 +44,18 @@ TYPE TYPE_SSDP2D_ID
          & NRVTOPTL2D, NRXBOMEGAMH2D, NRXBOMEGAML2D,&
          & NRVRSMINB2D, NRVANMAXH2D, NRVANMAXL2D,&
          & NRVBSLAI_NITROH2D, NRVBSLAI_NITROL2D, &
-         & NRDMAXROOT2D ! Maximum rooting depth (m), per point -- see LEUNIFORMROOT
-                        ! in yos_soil.F90 and susdp_dflt_ctl_mod.F90. Prototype:
-                        ! defaults to a broadcast global scalar (YDSOIL%RDMAXROOT);
-                        ! intended to eventually be set per-point from an external
-                        ! dataset (e.g. Stocker et al. 2023 zroot_cwd80), the same
-                        ! way the calibrated (LESSDP_CALIB) path already overrides
-                        ! other SSDP fields from surf_param.nc.
+         & NRDMAXROOTH2D, NRDMAXROOTL2D ! Maximum rooting depth (m), per point,
+                        ! separately for high/low canopy -- see LEUNIFORMROOT in
+                        ! yos_soil.F90 and susdp_dflt_ctl_mod.F90. Prototype:
+                        ! defaults to a vegetation- and soil-texture-dependent
+                        ! value derived from the existing Zeng et al. (1998)
+                        ! root profile (see susdp_dflt_ctl_mod.F90), or a fixed
+                        ! broadcast scalar (YDSOIL%RDMAXROOT) when that is
+                        ! pinned positive. Intended to eventually also accept a
+                        ! per-point override from an external dataset (e.g.
+                        ! Stocker et al. 2023 zroot_cwd80), the same way the
+                        ! calibrated (LESSDP_CALIB) path already overrides other
+                        ! SSDP fields from surf_param.nc.
 END TYPE
 
 TYPE(TYPE_SSDP2D_ID), PARAMETER :: SSDP2D_ID=TYPE_SSDP2D_ID(1,2,3,4,5,6,7,8,9,10,&
@@ -59,9 +64,9 @@ TYPE(TYPE_SSDP2D_ID), PARAMETER :: SSDP2D_ID=TYPE_SSDP2D_ID(1,2,3,4,5,6,7,8,9,10
         & 31,32,33,34,35,36,37,38,39,40, &
         & 41,42,43,44,45,46,47,48,49,50, &
         & 51,52,53,54,55,56,57,58,59,60, &
-        & 61,62,63,64,65,66)
+        & 61,62,63,64,65,66,67)
 
-INTEGER(KIND=JPIM), PARAMETER :: NSSDP2D = 66 ! Number of SSDP2D variables
+INTEGER(KIND=JPIM), PARAMETER :: NSSDP2D = 67 ! Number of SSDP2D variables
 
 ! One ID name for each variable in the VSURF3 group
 TYPE TYPE_SSDP3D_ID

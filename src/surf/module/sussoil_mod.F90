@@ -150,13 +150,16 @@ YDSOIL%LEFRZFLOOR=.TRUE.
 
 ! Prototype: replace the default Zeng et al. (1998) double-exponential root
 ! fraction with the Stevens et al. (2020) uniform-to-RDMAXROOT one (see
-! SUSVEG). Independent of the switches above -- test separately first.
-! RDMAXROOT=1.0 matches the middle of Stevens et al.'s own tested range
-! (0.5/1/2/3 m) -- a single global scalar for now; AU-DaS testing swept
-! 0.5-10 m and found deeper values trade NEE skill for Qle/Qh skill (see
-! session notes), so treat this default as a placeholder, not a calibration.
+! SUSDP_DFLT_CTL). Independent of the switches above -- test separately
+! first. RDMAXROOT<=0 means "auto": each point/canopy layer gets its own
+! rooting depth, derived from the existing Zeng profile weighted by local
+! soil capacity (see SUSDP_DFLT_CTL) rather than one fixed number for
+! every vegetation type. Set RDMAXROOT to a fixed positive value instead
+! to pin every point to that one depth -- the flat-scalar behaviour used
+! for the AU-DaS sensitivity sweeps earlier this session (0.5-10 m tested;
+! deeper values traded NEE skill for Qle/Qh skill, see session notes).
 YDSOIL%LEUNIFORMROOT=.TRUE.
-YDSOIL%RDMAXROOT=1.0_JPRB
+YDSOIL%RDMAXROOT=-1.0_JPRB
 
 ! Prototype: taper free-drainage conductivity at the bottom layer towards
 ! zero once the modelled profile depth reaches the real depth to bedrock
