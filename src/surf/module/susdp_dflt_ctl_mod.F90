@@ -63,7 +63,10 @@ TYPE(TVEG),         INTENT(IN)  :: YDVEG
 TYPE(TSOIL),        INTENT(IN)  :: YDSOIL
 TYPE(TAGS),         INTENT(IN)  :: YDAGS
 
-INTEGER(KIND=JPIM) :: JK
+INTEGER(KIND=JPIM) :: JK, JL
+REAL(KIND=JPRB) :: ZDEPTH_UPPER, ZDEPTH_LOWER
+INTEGER(KIND=JPIM) :: IVTH(KFDIA-KIDIA+1), IVTL(KFDIA-KIDIA+1)
+LOGICAL :: LLODDVTYPE(KFDIA-KIDIA+1)
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
 IF (LHOOK) CALL DR_HOOK('SUSDP_DFLT_CTL_MOD:SUSDP_DFLT_CTL',0,ZHOOK_HANDLE)
@@ -75,6 +78,7 @@ ASSOCIATE(RVCOVH2D=>PSSDP2(:,SSDP2D_ID%NRVCOVH2D), RVCOVL2D=>PSSDP2(:,SSDP2D_ID%
     & RVZ0MH2D=>PSSDP2(:,SSDP2D_ID%NRVZ0MH2D), RVZ0ML2D=>PSSDP2(:,SSDP2D_ID%NRVZ0ML2D),&
     & RVZ0HH2D=>PSSDP2(:,SSDP2D_ID%NRVZ0HH2D), RVZ0HL2D=>PSSDP2(:,SSDP2D_ID%NRVZ0HL2D),&
     & RVRSMINB2D=>PSSDP2(:,SSDP2D_ID%NRVRSMINB2D),&
+    & RDMAXROOT2D=>PSSDP2(:,SSDP2D_ID%NRDMAXROOT2D),&
     & RVROOTSAH3D=>PSSDP3(:,:,SSDP3D_ID%NRVROOTSAH3D), RVROOTSAL3D=>PSSDP3(:,:,SSDP3D_ID%NRVROOTSAL3D),&
     & RCGDRYM3D=>PSSDP3(:,:,SSDP3D_ID%NRCGDRYM3D), RLAMBDAM3D=>PSSDP3(:,:,SSDP3D_ID%NRLAMBDAM3D),&
     & RMVGALPHA3D=>PSSDP3(:,:,SSDP3D_ID%NRMVGALPHA3D), RNFACM3D=>PSSDP3(:,:,SSDP3D_ID%NRNFACM3D),&
@@ -123,9 +127,42 @@ RVZ0HH2D(:)    = YDVEG%RVZ0H(NINT(PTVH(KIDIA:KFDIA)))
 RVZ0HL2D(:)    = YDVEG%RVZ0H(NINT(PTVL(KIDIA:KFDIA)))
 RVRSMINB2D(:)  = 50.0_JPRB
 
+! Prototype: RDMAXROOT2D is genuinely per-point (unlike YDSOIL%RDMAXROOT,
+! a single global scalar) -- defaults to a broadcast of that scalar here,
+! but is the natural slot for a future per-point override (e.g. from
+! Stocker et al. 2023 zroot_cwd80), the same way LESSDP_CALIB already
+! overrides other SSDP fields from surf_param.nc. See LEUNIFORMROOT in
+! yos_soil.F90.
+RDMAXROOT2D(:) = YDSOIL%RDMAXROOT
+
+IVTH(:) = NINT(PTVH(KIDIA:KFDIA))
+IVTL(:) = NINT(PTVL(KIDIA:KFDIA))
+! Zero-root-depth types (desert=8, ice=12, water=14, ocean=15, water/land
+! mix=20): SRFROOTFR pins these entirely to layer 1 and skips them for the
+! same reason the Zeng exponential does -- there's no meaningful rooting
+! depth to assign. Leave them on the YDVEG%RVROOTSA(1,.)=1 default even
+! when LEUNIFORMROOT is active, rather than giving bare ground/water/ice
+! points an artificial uniform root profile.
+LLODDVTYPE(:) = .FALSE.
+DO JL=1,SIZE(IVTH)
+  LLODDVTYPE(JL) = ANY(IVTH(JL) == (/8,12,14,15,20/)) .OR. ANY(IVTL(JL) == (/8,12,14,15,20/))
+ENDDO
+
 DO JK=1, KLEVS3D
-  RVROOTSAH3D(:,JK) = YDVEG%RVROOTSA(JK, NINT(PTVH(KIDIA:KFDIA)))
-  RVROOTSAL3D(:,JK) = YDVEG%RVROOTSA(JK, NINT(PTVL(KIDIA:KFDIA)))
+  RVROOTSAH3D(:,JK) = YDVEG%RVROOTSA(JK, IVTH(:))
+  RVROOTSAL3D(:,JK) = YDVEG%RVROOTSA(JK, IVTL(:))
+  IF (YDSOIL%LEUNIFORMROOT) THEN
+! Stevens et al. (2020, Atmosphere, Eq. 5): uniform root density down to
+! RDMAXROOT2D, zero below it. ZDEPTH_UPPER/LOWER are scalars (the layer
+! grid itself doesn't vary by point), RDMAXROOT2D varies by point, so the
+! MIN/MAX below broadcast correctly across the whole KIDIA:KFDIA vector.
+    ZDEPTH_UPPER = SUM(YDSOIL%RDAW(1:JK-1))
+    ZDEPTH_LOWER = ZDEPTH_UPPER + YDSOIL%RDAW(JK)
+    WHERE (.NOT. LLODDVTYPE(:))
+      RVROOTSAH3D(:,JK) = MAX(0.0_JPRB,MIN(RDMAXROOT2D(:),ZDEPTH_LOWER)-ZDEPTH_UPPER)/RDMAXROOT2D(:)
+      RVROOTSAL3D(:,JK) = RVROOTSAH3D(:,JK)
+    ENDWHERE
+  ENDIF
 ENDDO
 
 ! Soil Parameters
