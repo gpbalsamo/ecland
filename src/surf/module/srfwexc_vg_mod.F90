@@ -197,7 +197,7 @@ REAL(KIND=JPRB) :: Z_RHOH20, ZD, &
  & ZWCONS, ZKMD, &
  & ZRSFL, ZROEFF, ZSIGOR, ZBWS, ZB1, ZBM, ZWMAX, ZWMIN, &
  & ZCONW1, ZLYEPS, ZLYSIC, ZVOL, ZROS, ZSUM, ZLIMRS, ZWSATM, ZWRESTM, ZWFAC_S, ZWK ,ZWMK, &
- & ZWFLOOR, ZSEWP, ZKWPFLOOR
+ & ZWFLOOR, ZSEWP, ZKWPFLOOR, ZTOTAL_DEPTH, ZBEDROCKFAC
 REAL(KIND=JPRD) :: ZDD, ZKD, ZSE, ZSEMAX, ZDMAX_D, ZSEMIN, ZDMIN_D
 
 REAL(KIND=JPRB) :: ZFRK(KLON,KLEVS)
@@ -627,7 +627,19 @@ DO JK=2,KLEVS_WB
         ZKM=ZWCONS
       ENDIF
           
-      IF (JK == KLEVS_WB) ZD=0.0_JPRB 
+      IF (JK == KLEVS_WB) ZD=0.0_JPRB
+
+! Prototype: taper the bottom layer's free-drainage conductivity towards
+! zero once the modelled profile depth reaches the real depth to bedrock,
+! instead of draining freely into rock the model doesn't represent. See
+! LEBEDROCKLIM/RDBEDROCK in yos_soil.F90. No effect above bedrock (factor
+! clamped to 1), and no effect at any layer above the bottom one.
+      IF (JK == KLEVS_WB .AND. YDSOIL%LEBEDROCKLIM) THEN
+        ZTOTAL_DEPTH=SUM(RDAW(1:KLEVS_WB))
+        ZBEDROCKFAC=MAX(0.0_JPRB,MIN(1.0_JPRB, &
+         & (YDSOIL%RDBEDROCK-ZTOTAL_DEPTH+RDAW(KLEVS_WB))/RDAW(KLEVS_WB)))
+        ZK=ZK*ZBEDROCKFAC
+      ENDIF
 
       IF (LLFREEZ) THEN
         IF (JK < KLEVS_WB) THEN
