@@ -177,6 +177,9 @@ SELECT CASE(CNAME)
   CASE('CanopInt')
     CLNAME='canopy interception depth'
     CUNITS='kg m-2'
+  CASE('WTD')
+    CLNAME='water table depth'
+    CUNITS='m'
   CASE('SWE')
     CLNAME='snow water equivalent'
     CUNITS='kg m-2'

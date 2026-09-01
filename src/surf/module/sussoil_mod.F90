@@ -189,16 +189,16 @@ YDSOIL%RDMAXROOT=-1.0_JPRB
 YDSOIL%LEBEDROCKLIM=.TRUE.
 YDSOIL%RDBEDROCK=100.0_JPRB
 
-! Prototype: Gardner (1958)-type capillary-rise recharge from the water
-! table into every layer above it, drawing down a finite prognostic aquifer
-! (see SRFGWRECHARGE_MOD). Same "no data available" logic as RDBEDROCK
-! above for the *initial* depth: genuinely external fact, so the safe
-! default is deep enough to be inert (100m) rather than a guessed shallow
-! value. RGWSPECYIELD sets the aquifer's size (see yos_soil.F90) -- 0.1 is
-! an honest guess in the middle of the typical literature range, not a
-! calibration. Independent of the switches above -- test separately first.
+! Prototype: bidirectional water-table/soil exchange (capillary-rise
+! extraction, free-drainage recharge) against a genuine, restart-checkpointed
+! prognostic water-table depth field (see SRFGWRECHARGE_MOD) -- its own
+! "no data available" default (100m, deep enough to be inert everywhere,
+! same rationale as RDBEDROCK) lives in sugp1s.F90's cold start and
+! rdsupr.F90's "missing from restart file" fallback, not here. RGWSPECYIELD
+! sets the aquifer's size (see yos_soil.F90) -- 0.1 is an honest guess in the
+! middle of the typical literature range, not a calibration. Independent of
+! the switches above -- test separately first.
 YDSOIL%LEGWRECHARGE=.TRUE.
-YDSOIL%RWTD=100.0_JPRB
 YDSOIL%RGWSPECYIELD=0.1_JPRB
 
 !    SNOW LOGICALS

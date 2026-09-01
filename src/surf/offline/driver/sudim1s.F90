@@ -94,7 +94,7 @@ NLEV=1		! number of atmospheric levels
 NVS0=3		! soil water, soil temp, ice temp
 NVS1=1            ! liquid soil water
 NVSG=4*NCSNEC+1		! (snow depth, temp, water,density)*NCSNEC + alb
-NVRS=2		! skin temp, skin depth
+NVRS=3		! skin temp, skin depth, water-table depth (LEGWRECHARGE)
 NVLA=7          ! lake prognostic variable ! ENDUTRA 
 NVEG=3          ! lai, Biomstr, Biomstr2
 

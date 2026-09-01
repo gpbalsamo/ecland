@@ -4,7 +4,7 @@ USE PARKIND1  ,ONLY : JPIM     ,JPRB,  JPRD
 USE YOMHOOK   ,ONLY : LHOOK    ,DR_HOOK, JPHOOK
 USE YOMGP1S0 , ONLY : GP0      ,TSLNU0   ,TILNU0   ,QLINU0 &
                      &,FSNNU0   ,TSNNU0   ,ASNNU0   ,RSNNU0,WSNNU0 &
-                     &,TRENU0   ,WRENU0 &
+                     &,TRENU0   ,WRENU0   ,WTDNU0 &
                      &,TLICENU0,TLMNWNU0,TLWMLNU0,TLBOTNU0,TLSFNU0 & ! FLAKE
                      &,HLICENU0,HLMLNU0 &                             ! FLAKE 
                      &,LAINU0 , BSTRNU0, BSTR2NU0,UONU0,VONU0,TONU0,SONU0 
@@ -310,11 +310,11 @@ ENDDO
 
 
 ALLOCATE (ZREALD(NLALO))
-NVARS2D=14
+NVARS2D=15
  CVARS2D(1:NVARS2D)=(/'SWE      ','snowdens ','SAlbedo  ','SnowT    ',&
                       'CanopInt ','AvgSurfT ','TLICE    ','TLMNW    ',&
                       'TLWML    ','TLBOT    ','TLSF     ','HLICE    ',&
-                      'HLML     ','slw      '/)
+                      'HLML     ','slw      ','WTD      '/)
 
 DO IVAR=1,NVARS2D
   CVAR=TRIM(CVARS2D(IVAR))
@@ -426,6 +426,16 @@ DO IVAR=1,NVARS2D
       CALL MPL_SCATTERV(PRECVBUF=ZBUF(:),KROOT=1,PSENDBUF=ZREALD(:),KSENDCOUNTS=NPOIPALL(:),CDSTRING="RDSUPR:WSNNU0")
       RECV_BUF = PACK(ZBUF(:),LMASK(ISP:IENP))
       CALL UNPACK_BUFFER(WSNNU0(:,1,:), RECV_BUF)
+    CASE('WTD')
+      IF( MYPROC == 1 ) THEN
+        IF ( STATUS /= 0 ) THEN
+          ZREALD(:) = 100._JPRB ! water-table depth "no data" default (LEGWRECHARGE)
+          WRITE(NULOUT,'(A)') CVAR//' Set to default 100m'
+        ENDIF
+      ENDIF
+      CALL MPL_SCATTERV(PRECVBUF=ZBUF(:),KROOT=1,PSENDBUF=ZREALD(:),KSENDCOUNTS=NPOIPALL(:),CDSTRING="RDSUPR:WTDNU0")
+      RECV_BUF = PACK(ZBUF(:),LMASK(ISP:IENP))
+      CALL UNPACK_BUFFER(WTDNU0(:,:), RECV_BUF)
     CASE DEFAULT
       WRITE(NULOUT,*) CVAR, ' Not defined in RDCLIM'
       CALL ABOR1('RDSUPR:')
