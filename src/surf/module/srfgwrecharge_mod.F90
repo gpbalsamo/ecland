@@ -201,6 +201,35 @@ USE YOS_THF         , ONLY : RHOH2O
 !     partition on aquifer fullness (new RGWLATDEPTH parameter), since the
 !     static version could not both recover lateral flow and preserve
 !     water-table stability at the same sites. 2026-09-02
+!     RGWLATSIGMIN/RGWLATSIGMAX corrected from an ad hoc 10/150 (tuned only
+!     against this branch's own 42-site PLUMBER2 PSDOR distribution) to
+!     57/525, matching RSIGORMIN/RSIGORMAX now used for LESSRO itself at
+!     this branch's actual TCo1279 (~9km) clim resolution (see
+!     namelist_ecland_50R1_runoff_fix in plumber2-ecland) -- the old 100/
+!     1000 Fortran default several sites had silently inherited (via the
+!     _ctl namelist, which never set these) was for a much coarser
+!     resolution than these clim files are. RGWLATDEPTH swept 5-80m on a
+!     5-site subset at the corrected sigma values: unlike the static
+!     partition, larger RGWLATDEPTH improved BOTH water-table realism and
+!     Qsb preservation together (no forced tradeoff), still climbing at
+!     80m, not yet saturated. 2026-09-02
+!
+!     KNOWN OPEN ISSUE, PARKED 2026-09-02: RGWLATDEPTH=80 (the swept value
+!     left as current default below) does NOT hold across soil vertical
+!     discretizations. Same 5-site subset, NCSS=4 vs 9 (identical 2.89m
+!     total depth, finer layers only) vs 14 (12m total depth): AU-Tum's
+!     final WTD came out 6.41m / 25.01m / 31.77m respectively -- NCSS=4->9
+!     alone (pure refinement, same physical depth) already differs by
+!     ~4x, so this is not simply "deeper profile reaches a different
+!     equilibrium" but a genuine discretization sensitivity. Suspected
+!     cause: PGWDRAINFLUX itself (SRFWEXC_VG's diagnosed bottom-layer
+!     gravity-drainage flux, the input to this whole partition) depends on
+!     the bottom layer's own thickness/depth, which differs substantially
+!     across NCSS=4/9/14 -- so RGWLATDEPTH calibrated against one
+!     discretization's typical flux magnitude does not transfer to
+!     another's. Not yet root-caused or fixed; do not treat RGWLATDEPTH=80
+!     (or the sigma values above) as validated for anything but the
+!     NCSS=4 configuration until this is resolved.
 !     ------------------------------------------------------------------
 
 IMPLICIT NONE
@@ -232,17 +261,19 @@ REAL(KIND=JPRB),    INTENT(OUT)  :: PGWDRAINUSED(:)
 ! the tendency-clamp arithmetic below.
 REAL(KIND=JPRB), PARAMETER :: RGWTD_MIN=0.5_JPRB
 
-! Deliberately NOT the same as YDSOIL%RSIGORMIN/RSIGORMAX: those are
-! calibrated for LESSRO's own subgrid-saturation purpose and, reused
-! as-is here, give f_recharge~1 (all vertical, no lateral) for nearly
-! every real PLUMBER2 site -- even alpine ones -- since that scheme's
-! scale simply isn't the right one for this question. These two set the
-! VIC shape (B) parameter below via PSDOR, exactly as RSIGORMIN/RSIGORMAX
-! do for LESSRO, just calibrated against the 42-site PLUMBER2 network's
-! own PSDOR distribution (p10~7m, median~38m, p90~248m) instead of
-! reusing an unrelated scheme's tuning. Free parameter -- calibrate here.
-REAL(KIND=JPRB), PARAMETER :: RGWLATSIGMIN=10.0_JPRB
-REAL(KIND=JPRB), PARAMETER :: RGWLATSIGMAX=150.0_JPRB
+! Separate PARAMETERs from YDSOIL%RSIGORMIN/RSIGORMAX (not tied to the
+! namelist) so this scheme's own calibration can move independently of
+! LESSRO's, even though they start from the same numbers: PSDOR's own
+! statistics are resolution-dependent, and RSIGORMIN=100/RSIGORMAX=1000
+! (the Fortran default) is the WRONG scale for the TCo1279 (~9km) clim
+! files this branch's PLUMBER2 sites are built from -- the resolution-
+! correct operational values are RSIGORMIN=57/RSIGORMAX=525 (see
+! namelist_ecland_50R1_runoff_fix). These two start at that same 57/525,
+! since PSDOR's heterogeneity meaning at this resolution is exactly
+! LESSRO's own calibration question -- free parameters, recalibrate here
+! if the two schemes' required sensitivity to PSDOR turns out to differ.
+REAL(KIND=JPRB), PARAMETER :: RGWLATSIGMIN=57.0_JPRB
+REAL(KIND=JPRB), PARAMETER :: RGWLATSIGMAX=525.0_JPRB
 
 ! Effective depth (M) of the "fast" aquifer zone the VIC saturation-excess
 ! algebra below operates over -- the direct analogue of LESSRO's own
@@ -252,7 +283,7 @@ REAL(KIND=JPRB), PARAMETER :: RGWLATSIGMAX=150.0_JPRB
 ! RGWSPECYIELD: zero once WTD reaches or exceeds RGWLATDEPTH, maximal as
 ! WTD approaches the surface. Placeholder value below -- free parameter,
 ! calibrate alongside RGWLATSIGMIN/RGWLATSIGMAX.
-REAL(KIND=JPRB), PARAMETER :: RGWLATDEPTH=5.0_JPRB
+REAL(KIND=JPRB), PARAMETER :: RGWLATDEPTH=80.0_JPRB
 
 REAL(KIND=JPRB) :: ZDEPTH_UPPER, ZDEPTH_MID, ZDIST, ZCAPFLUX, ZEXTRACT
 REAL(KIND=JPRB) :: ZDRAIN, ZRECHARGE, ZDWTDDT, ZROEFF
