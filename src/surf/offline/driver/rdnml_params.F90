@@ -320,6 +320,17 @@ CONTAINS
     REAL(KIND=JPRB) :: RTFREEZSICECEL = -1.7_JPRB
     REAL(KIND=JPRB) :: RTMELTSICECEL = 0.0_JPRB
 
+    ! "Depth trilogy" prototype switches -- see yos_soil.F90 for what each
+    ! does. All default to .FALSE. (plain baseline ecLand) so an experiment
+    ! that never mentions them is unaffected; namelist-settable individually
+    ! or all together.
+    LOGICAL :: LEWVFLUX = .FALSE.
+    LOGICAL :: LEWPFLOOR = .FALSE.
+    LOGICAL :: LEFRZFLOOR = .FALSE.
+    LOGICAL :: LEUNIFORMROOT = .FALSE.
+    LOGICAL :: LEBEDROCKLIM = .FALSE.
+    LOGICAL :: LEGWRECHARGE = .FALSE.
+
     REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
 #include "namparsoil.h"
@@ -372,6 +383,12 @@ CONTAINS
     TMP_SURF%RLAMBDRYMC   = RLAMBDRYMC
     TMP_SURF%RTFREEZSICECEL = RTFREEZSICECEL
     TMP_SURF%RTMELTSICECEL = RTMELTSICECEL
+    TMP_SURF%LEWVFLUX      = LEWVFLUX
+    TMP_SURF%LEWPFLOOR     = LEWPFLOOR
+    TMP_SURF%LEFRZFLOOR    = LEFRZFLOOR
+    TMP_SURF%LEUNIFORMROOT = LEUNIFORMROOT
+    TMP_SURF%LEBEDROCKLIM  = LEBEDROCKLIM
+    TMP_SURF%LEGWRECHARGE  = LEGWRECHARGE
 
     !     ------------------------------------------------------------------
     !*         3.     PRINT FINAL VALUES
@@ -407,7 +424,13 @@ CONTAINS
     WRITE(NULOUT,*) '   RLAMBDRYMC     = ', RLAMBDRYMC
     WRITE(NULOUT,*) '   RTFREEZSICECEL = ', RTFREEZSICECEL
     WRITE(NULOUT,*) '   RTMELTSICECEL  = ', RTMELTSICECEL
-    
+    WRITE(NULOUT,*) '   LEWVFLUX       = ', LEWVFLUX
+    WRITE(NULOUT,*) '   LEWPFLOOR      = ', LEWPFLOOR
+    WRITE(NULOUT,*) '   LEFRZFLOOR     = ', LEFRZFLOOR
+    WRITE(NULOUT,*) '   LEUNIFORMROOT  = ', LEUNIFORMROOT
+    WRITE(NULOUT,*) '   LEBEDROCKLIM   = ', LEBEDROCKLIM
+    WRITE(NULOUT,*) '   LEGWRECHARGE   = ', LEGWRECHARGE
+
 
     IF (LHOOK) CALL DR_HOOK('RDNML_SOIL',1,ZHOOK_HANDLE)
 

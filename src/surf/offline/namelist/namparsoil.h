@@ -14,5 +14,11 @@ NAMELIST/NAMPARSOIL/&
 & , RKERST3, RSRDEP, RSIGORMIN, RSIGORMAX, RWLMAX, RPSFR, RBARPWP, RVGBARCAP&
 & , RBARCAP, RCLU, RRSF1A, RRSF1B, RRSF1C, RRHOSM, RLAMBDAQ, RLAMBDAO&
 & , RLAMBDAMIN, RLAMBDAMAX, RLAMBDRYMA, RLAMBDRYMB, RLAMBDRYMC&
-& , RTFREEZSICECEL, RTMELTSICECEL
+& , RTFREEZSICECEL, RTMELTSICECEL&
+! * "depth trilogy" prototype switches -- see yos_soil.F90 for what each does.
+!   All default to .FALSE. below (RDNML_SOIL), i.e. unset in a namelist means
+!   plain baseline ecLand -- see the block comment ahead of the WRITE lines in
+!   RDNML_SOIL for why running all six .TRUE. together is still expected to
+!   work.
+& , LEWVFLUX, LEWPFLOOR, LEFRZFLOOR, LEUNIFORMROOT, LEBEDROCKLIM, LEGWRECHARGE
 !     ------------------------------------------------------------------

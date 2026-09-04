@@ -131,34 +131,35 @@ RQSNCR =1.0_JPRB/RQSNCRINV
 LEVGEN=LD_LEVGEN
 LESSRO=LD_LESSRO
 
-! Prototype additive soil water-vapour flux (see SRFWVAPOR_MOD): off by
-! default, not yet threaded through the namelist -- flip to .TRUE. here
-! to build the "ecLand + vapour term" test configuration.
-YDSOIL%LEVAPSOIL=.TRUE.
+! Prototype additive soil water-vapour flux (see SRFWVAPOR_MOD). Switch is
+! LEWVFLUX, namelist-set via NAMPARSOIL (RDNML_SOIL -> TMP_SURF ->
+! SUSSURF_PARAMS -> YDSOIL, all ahead of this call) -- do NOT assign
+! YDSOIL%LEWVFLUX here, SUSSURF_PARAMS already has and this call runs after
+! it. Defaults to .FALSE. (plain baseline ecLand) if unset in the namelist.
 
 ! Prototype: floor the VG hydraulic conductivity/diffusivity lookup at
-! wilting point instead of residual moisture (see SRFWEXC_VG) -- flip to
-! .TRUE. here to build the "ecLand + wilting-point floor" test
-! configuration. Independent of LEVAPSOIL above -- test separately first.
-YDSOIL%LEWPFLOOR=.TRUE.
+! wilting point instead of residual moisture (see SRFWEXC_VG). Switch is
+! LEWPFLOOR, namelist-set the same way as LEWVFLUX above -- independent of
+! it, test separately first. Defaults to .FALSE.
 
 ! Prototype: floor the frozen-fraction hydraulic conductivity at the same
 ! wilting-point value as LEWPFLOOR, instead of letting it blend to zero as
-! ice fraction -> 1 (see SRFWEXC_VG, the LLFREEZ blocks). Independent of
-! LEWPFLOOR/LEVAPSOIL above -- test separately first.
-YDSOIL%LEFRZFLOOR=.TRUE.
+! ice fraction -> 1 (see SRFWEXC_VG, the LLFREEZ blocks). Switch is
+! LEFRZFLOOR, namelist-set the same way -- independent of LEWPFLOOR/
+! LEWVFLUX above, test separately first. Defaults to .FALSE.
 
 ! Prototype: replace the default Zeng et al. (1998) double-exponential root
 ! fraction with the Stevens et al. (2020) uniform-to-RDMAXROOT one (see
-! SUSDP_DFLT_CTL). Independent of the switches above -- test separately
-! first. RDMAXROOT<=0 means "auto": each point/canopy layer gets its own
-! rooting depth, derived from the existing Zeng profile weighted by local
-! soil capacity (see SUSDP_DFLT_CTL) rather than one fixed number for
-! every vegetation type. Set RDMAXROOT to a fixed positive value instead
-! to pin every point to that one depth -- the flat-scalar behaviour used
-! for the AU-DaS sensitivity sweeps earlier this session (0.5-10 m tested;
-! deeper values traded NEE skill for Qle/Qh skill, see session notes).
-YDSOIL%LEUNIFORMROOT=.TRUE.
+! SUSDP_DFLT_CTL). Switch is LEUNIFORMROOT, namelist-set the same way as
+! the others above (defaults to .FALSE.) -- independent of them, test
+! separately first. RDMAXROOT itself is not yet namelist-wired (still set
+! here): <=0 means "auto", each point/canopy layer gets its own rooting
+! depth, derived from the existing Zeng profile weighted by local soil
+! capacity (see SUSDP_DFLT_CTL) rather than one fixed number for every
+! vegetation type. Set RDMAXROOT to a fixed positive value instead to pin
+! every point to that one depth -- the flat-scalar behaviour used for the
+! AU-DaS sensitivity sweeps earlier this session (0.5-10 m tested; deeper
+! values traded NEE skill for Qle/Qh skill, see session notes).
 YDSOIL%RDMAXROOT=-1.0_JPRB
 
 ! Prototype: taper free-drainage conductivity at the bottom layer towards
@@ -185,8 +186,10 @@ YDSOIL%RDMAXROOT=-1.0_JPRB
 ! bottom of the profile" -- blocking bottom drainage makes Qsb go UP (more
 ! saturation-excess runoff once the profile backs up), not down. Don't use
 ! Qsb alone to judge this switch's effect; check layer-resolved SoilMoist
-! instead. To reproduce that test, override RDBEDROCK=2.62_JPRB here.
-YDSOIL%LEBEDROCKLIM=.TRUE.
+! instead. To reproduce that test, override RDBEDROCK=2.62_JPRB here. Switch
+! is LEBEDROCKLIM, namelist-set the same way as LEWVFLUX etc. above
+! (defaults to .FALSE.); RDBEDROCK itself is not yet namelist-wired (still
+! set here).
 YDSOIL%RDBEDROCK=100.0_JPRB
 
 ! Prototype: bidirectional water-table/soil exchange (capillary-rise
@@ -196,9 +199,10 @@ YDSOIL%RDBEDROCK=100.0_JPRB
 ! same rationale as RDBEDROCK) lives in sugp1s.F90's cold start and
 ! rdsupr.F90's "missing from restart file" fallback, not here. RGWSPECYIELD
 ! sets the aquifer's size (see yos_soil.F90) -- 0.1 is an honest guess in the
-! middle of the typical literature range, not a calibration. Independent of
-! the switches above -- test separately first.
-YDSOIL%LEGWRECHARGE=.TRUE.
+! middle of the typical literature range, not a calibration; not yet
+! namelist-wired (still set here). Switch is LEGWRECHARGE, namelist-set the
+! same way as the others above (defaults to .FALSE.) -- independent of them,
+! test separately first.
 YDSOIL%RGWSPECYIELD=0.1_JPRB
 
 !    SNOW LOGICALS
