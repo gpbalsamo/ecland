@@ -214,22 +214,58 @@ USE YOS_THF         , ONLY : RHOH2O
 !     Qsb preservation together (no forced tradeoff), still climbing at
 !     80m, not yet saturated. 2026-09-02
 !
-!     KNOWN OPEN ISSUE, PARKED 2026-09-02: RGWLATDEPTH=80 (the swept value
-!     left as current default below) does NOT hold across soil vertical
-!     discretizations. Same 5-site subset, NCSS=4 vs 9 (identical 2.89m
-!     total depth, finer layers only) vs 14 (12m total depth): AU-Tum's
-!     final WTD came out 6.41m / 25.01m / 31.77m respectively -- NCSS=4->9
-!     alone (pure refinement, same physical depth) already differs by
-!     ~4x, so this is not simply "deeper profile reaches a different
-!     equilibrium" but a genuine discretization sensitivity. Suspected
-!     cause: PGWDRAINFLUX itself (SRFWEXC_VG's diagnosed bottom-layer
-!     gravity-drainage flux, the input to this whole partition) depends on
-!     the bottom layer's own thickness/depth, which differs substantially
-!     across NCSS=4/9/14 -- so RGWLATDEPTH calibrated against one
-!     discretization's typical flux magnitude does not transfer to
-!     another's. Not yet root-caused or fixed; do not treat RGWLATDEPTH=80
-!     (or the sigma values above) as validated for anything but the
-!     NCSS=4 configuration until this is resolved.
+!     KNOWN OPEN ISSUE, PARKED 2026-09-02: at that point RGWLATDEPTH=80 did
+!     NOT hold across soil vertical discretizations. Same 5-site subset,
+!     NCSS=4 vs 9 (identical 2.89m total depth, finer layers only) vs 14
+!     (12m total depth): AU-Tum's final WTD came out 6.41m / 25.01m /
+!     31.77m respectively -- NCSS=4->9 alone (pure refinement, same
+!     physical depth) already differs by ~4x, so this is not simply
+!     "deeper profile reaches a different equilibrium" but a genuine
+!     discretization sensitivity. Suspected cause: PGWDRAINFLUX itself
+!     (SRFWEXC_VG's diagnosed bottom-layer gravity-drainage flux, the
+!     input to this whole partition) depends on the bottom layer's own
+!     thickness/depth, which differs substantially across NCSS=4/9/14 --
+!     so RGWLATDEPTH calibrated against one discretization's typical flux
+!     magnitude does not transfer to another's. Not yet root-caused or
+!     fixed; treat every calibration below as NCSS=4-specific until this
+!     is resolved. (Confirmed independently, same date: NCSS=4->9 alone
+!     also shifts total column water -5.5% network-mean, total ET -6.9%
+!     (ESoil -12.0%, TVeg -5.7%), and Qsb +15% -- all from the near-
+!     surface/ET side of the discretization change, NOT from RGWLATDEPTH:
+!     identical at RGWLATDEPTH=80 and =300, so that part of the
+!     sensitivity is baked into the core model, independent of this
+!     partition's own calibration.)
+!
+!     42-SITE CALIBRATION AGAINST A REVISED TARGET, 2026-09-04: requirement
+!     changed to "hold WTD within 20% of Fan et al. (2017) or deeper" (NOT
+!     shallower), scored only against sites with Fan WTD >=10m (shallower
+!     sites are typically lateral-inflow-maintained -- e.g. riparian/
+!     valley-bottom settings -- which a 1D column cannot represent even in
+!     principle) and excluding FR-Pue/CN-Din (Fan WTD 197m/257m, beyond
+!     RDBEDROCK=100m -- structurally unreachable regardless of this
+!     partition's tuning). 29 evaluable sites. Swept RGWLATSIGMIN/MAX and
+!     RGWLATDEPTH across four regimes spanning the plausible range and
+!     beyond -- (57,525,80), (57,525,300), (5,150,100), and an extreme
+!     (0,10,100) pinning the VIC exponent near its 0.5 ceiling for nearly
+!     every site -- and ALL FOUR landed on exactly 16/29 passing. The 13
+!     that fail in every regime (DE-Gri, US-UMB, US-PFa, US-Blo, IT-Lav,
+!     FI-Hyy, DE-Hai, US-MMS, AU-Ctr, AU-Tum, US-Me2, US-Ha1, DE-Tha) move
+!     a little in the right direction under more aggressive settings (e.g.
+!     US-UMB 4.35m->7.06m, DE-Tha 28.7m->33.0m going from (5,150,100) to
+!     the extreme) but never cross their threshold. This is a genuine
+!     ceiling, not an undertuned parameter: the VIC shape exponent only
+!     materially changes the recharge/lateral split very close to full
+!     saturation (the storage-deficit term dominates everywhere else,
+!     regardless of exponent), and RGWLATDEPTH's own effect saturated
+!     between 80 and 300 -- so these three parameters, however combined,
+!     cap out at ~55% of evaluable sites for this target. Left at
+!     (57,525,100) -- physically the most defensible of the four tested
+!     (57/525 matches LESSRO's own resolution-correct calibration; 100
+!     coincides with RDBEDROCK) -- since the more extreme settings bought
+!     no additional passes. Reaching the remaining 13 sites, if possible
+!     at all in a 1D column, likely needs a different lever (RGWSPECYIELD,
+!     the extraction side of the balance, or accepting them as a
+!     documented limitation alongside the shallow-WTD exclusion above).
 !     ------------------------------------------------------------------
 
 IMPLICIT NONE
@@ -283,7 +319,7 @@ REAL(KIND=JPRB), PARAMETER :: RGWLATSIGMAX=525.0_JPRB
 ! RGWSPECYIELD: zero once WTD reaches or exceeds RGWLATDEPTH, maximal as
 ! WTD approaches the surface. Placeholder value below -- free parameter,
 ! calibrate alongside RGWLATSIGMIN/RGWLATSIGMAX.
-REAL(KIND=JPRB), PARAMETER :: RGWLATDEPTH=80.0_JPRB
+REAL(KIND=JPRB), PARAMETER :: RGWLATDEPTH=100.0_JPRB
 
 REAL(KIND=JPRB) :: ZDEPTH_UPPER, ZDEPTH_MID, ZDIST, ZCAPFLUX, ZEXTRACT
 REAL(KIND=JPRB) :: ZDRAIN, ZRECHARGE, ZDWTDDT, ZROEFF
