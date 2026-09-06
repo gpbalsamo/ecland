@@ -29,6 +29,7 @@ SAVE
 ! VFCVL   - low vegetation cover
 ! VFCVH   - high vegetation cover
 ! VFCUR   - urban cover (PASSIVE)
+! VFIRFR  - irrigation fraction
 ! VFTVL   - low vegetation type
 ! VFTVH   - high vegetation type
 !CORRECT THESE REPEATED ENTIRES 
@@ -52,6 +53,7 @@ SAVE
 ! VFCI    - sea ice fraction
 ! VFCIL   - land ice fraction
 ! VFLDEPTH- LAKE DEPTH                                           !FLAKE
+! VFLDEPTHF-LAKE VARIABLE DEPTH                                  !FLAKE/CMF
 ! VFCLAKE - LAKE FRACTION                                        !FLAKE
 ! VFZO    - vertical layer depth of ocean mixed layer model      !KPP
 ! VFHO    - vertical layer thickness of ocean mixed layer model  !KPP
@@ -216,6 +218,7 @@ REAL(KIND=JPRB),POINTER:: VFISOP_EP(:,:) => NULL()
 REAL(KIND=JPRB),POINTER:: VFCVL(:,:) => NULL()
 REAL(KIND=JPRB),POINTER:: VFCVH(:,:) => NULL()
 REAL(KIND=JPRB),POINTER:: VFCUR(:,:) => NULL()
+REAL(KIND=JPRB),POINTER:: VFIRFR(:,:) => NULL()
 
 
 REAL(KIND=JPRB),POINTER:: VFTVL(:,:) => NULL()
@@ -268,7 +271,8 @@ REAL(KIND=JPRB),POINTER:: VDIETL(:,:,:) => NULL()
 REAL(KIND=JPRB),POINTER:: VDTSKTL(:,:,:) => NULL()
 
 REAL(KIND=JPRB),POINTER:: VFLDEPTH(:,:) => NULL() !FLAKE
-REAL(KIND=JPRB),POINTER:: VFCLAKE(:,:) => NULL()  !FLAKE 
+REAL(KIND=JPRB),POINTER:: VFLDEPTHF(:,:) => NULL() !FLAKE + Flood
+REAL(KIND=JPRB),POINTER:: VFCLAKE(:,:) => NULL()  !FLAKE
 REAL(KIND=JPRB),POINTER:: VFCLAKEF(:,:) => NULL() !FLAKE + Flood
 
 REAL(KIND=JPRB),POINTER:: VFZO(:,:,:) => NULL()    !KPP

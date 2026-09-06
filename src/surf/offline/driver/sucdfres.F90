@@ -43,6 +43,7 @@ SUBROUTINE SUCDFRES
 !       E. Dutra     11/2009 add LAI restart
 !       Emanuel Dutra, June 2014: update netcd inteface and add netcdf4 
 !       Anna Agusti-Panareda, June 2021: Add C3/C4 photosynthetic pathway type (Ctype)
+!       Gianpaolo Balsamo,    Nov. 2025: Add Irrigation (Irrfrc)
 
 #endif
 USE PARKIND1  ,ONLY : JPIM     ,JPRB,   JPRD
@@ -103,14 +104,14 @@ ELSE
   IDIM2 = 1
 ENDIF
 
-  NVARS2D=34
+  NVARS2D=36
   CVARS2D(1:NVARS2D)=(/'Mask       ','z0m        ','lz0h       ','landsea    ','geopot     ',&
                        'cvl        ','cvh        ','tvl        ','tvh        ','sotype     ',&
                        'sdor       ','sst        ','seaice     ','glacierMask','CanopInt   ','SWE        ',&
                        'SnowT      ','SAlbedo    ','snowdens   ','AvgSurfT   ','TLICE      ',&
                        'TLMNW      ','TLWML      ','TLBOT      ','TLSF       ','HLICE      ',&
-                       'HLML       ','LDEPTH     ','CLAKE      ','x          ','CLAKEF     ',&
-                       'cu         ','ISOP_EP    ','WTD        '/)
+                       'HLML       ','LDEPTH     ','LDEPTHF    ','CLAKE      ','x          ','CLAKEF     ',&
+                       'cu         ','ISOP_EP    ','irrfrc     ','WTD        '/)
 
   IF (LEC4MAP) THEN
 

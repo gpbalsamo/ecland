@@ -26,6 +26,7 @@ REAL(KIND=JPRB) :: VTVH
 REAL(KIND=JPRB) :: VCVL
 REAL(KIND=JPRB) :: VCVH
 REAL(KIND=JPRB) :: VCUR
+REAL(KIND=JPRB) :: VIRFR
 REAL(KIND=JPRB) :: VSOTY
 REAL(KIND=JPRB) :: VSDOR
 REAL(KIND=JPRB) :: VCO2TYP
@@ -45,7 +46,8 @@ REAL(KIND=JPRB) :: VCLAKE
 !*    ------------------------------------------------------------------
 NAMELIST/NAMGPD1S/VALBF,VLAIL,VLAIH,&
                  &VRSML, VRSMH,VVEGF,VLAIF,& 
-                 &VZ0F ,VITM ,VZ0H ,VCVL ,VCVH ,VCUR  ,VTVL ,VCO2TYP, VTVH ,&
+                 &VZ0F ,VITM ,VZ0H ,VCVL ,VCVH ,VCUR  ,VIRFR,&
+		 &VTVL ,VCO2TYP, VTVH ,&
                  &VSST ,VCI  ,VCIL,VEMISF,VSOTY,VSDOR,VLDEPTH,VCLAKE, VR0L, VR0H
 
 !     ------------------------------------------------------------------

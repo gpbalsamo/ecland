@@ -137,8 +137,9 @@ NVSF=NVSF+1   ! include CO2type from climate files (C3/C4)
 NVSF=NVSF+8+9*NCOM      !KPP 
 NVSF=NVSF+1 ! +FWET
 NVSF=NVSF+1 ! add VFPBLOB - global gaussian reduced index 
-NVSF=NVSF+1 ! add MVFCLAKEF  lake + flood 
+NVSF=NVSF+2 ! add MVFCLAKEF MVFLDEPTHF lake + flood
 NVSF=NVSF+1 ! Include urban
+NVSF=NVSF+1 ! Include irrigation
 NVSF=NVSF+4 ! Include pavgpar + ISOP_EP + BVOCLAIL + BVOCLAIH
 NVSF=NVSF+1 ! Include land ice
 

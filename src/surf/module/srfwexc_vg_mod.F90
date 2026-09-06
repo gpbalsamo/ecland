@@ -2,10 +2,10 @@ MODULE SRFWEXC_VG_MOD
 CONTAINS
 SUBROUTINE SRFWEXC_VG(KIDIA,KFDIA,KLON,KLEVS,KCWS,KTILES,&
  & PSSDP3,PTMST,KTVL,KTVH,PSDOR,PFRTI,PEVAPTI,&
- & PWSAM1M,PTSAM1M,PCUR,&
+ & PWSAM1M,PTSAM1M,PCUR,PIRFR,PEVAPMU,&
  & PTSFC,PTSFL,PMSN,PEMSSN,PEINTTI,PEVAPSNW,&
  & YDSOIL,YDVEG,YDURB,&
- & PROS,PCFW,PRHSW,&
+ & PROS,PIRFL,PCFW,PRHSW,&
  & PSAWGFL,PFWEL1,PFWE234,&
  & LDLAND,PDHWLS)  
 
@@ -73,6 +73,8 @@ USE YOMSURF_SSDP_MOD, ONLY : SSDP3D_ID, NSSDP3D
 !    *PWSAM1M*    MULTI-LAYER SOIL MOISTURE                    M**3/M**3
 !    *PTSAM1M*    SOIL TEMPERATURE ALL LAYERS                    K
 !    *PCUR*       URBAN COVER                                   (0-1)
+!    *PIRFR*      IRRIGATION FRACTION                           (0-1)
+!    *PEVAPMU*    EVAPORATION FROM UNSTRESSED LAND             KG/M**2/S
 !    *PTSFC*      CONVECTIVE THROUGHFALL                       KG/M**2/S
 !    *PTSFL*      LARGE SCALE THROUGHFALL                      KG/M**2/S
 !    *PMSN*       SNOW MELTING                                 KG/M**2/S
@@ -88,6 +90,7 @@ USE YOMSURF_SSDP_MOD, ONLY : SSDP3D_ID, NSSDP3D
 !    *PCFW*       MODIFIED DIFFUSIVITIES                         M
 !    *PRHSW*      RIGHT-HAND SIDE OF SOIL MOISTURE EQUATIONS   m**3/m**3
 !    *PROS*       RUN-OFF FOR THE SURFACE LAYER                kg/m**2
+!    *PIRFL*      IRRIGATION FLUX                              KG/M**2/S
 !    *PFWEL1*     BARE GROUND AND TOP LAYER EXTRACTION
 !                 CONTRIBUTION TO EVAPORATION FROM
 !                 THE SKIN AND TOP LAYER                       KG/M**2/S
@@ -134,6 +137,7 @@ USE YOMSURF_SSDP_MOD, ONLY : SSDP3D_ID, NSSDP3D
 !                                               use of parameter values defined in namelist
 !     I. Ayan-Miguez (BSC) July 2023         Add PSSDP3 object for spatially distributed parameters
 !     J. McNorton            24/08/2022      urban tile
+!     G. Balsamo    ECMWF    04-11-2025      Include irrigation
 !     G. Balsamo    ECMWF    10-02-2026      Runoff fixes over orography and frozen soils
 !     ------------------------------------------------------------------
 
@@ -157,6 +161,8 @@ REAL(KIND=JPRB),    INTENT(IN)   :: PEVAPTI(:,:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PWSAM1M(:,:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PTSAM1M(:,:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PCUR(:)
+REAL(KIND=JPRB),    INTENT(IN)   :: PIRFR(:)
+REAL(KIND=JPRB),    INTENT(IN)   :: PEVAPMU(:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PTSFC(:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PTSFL(:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PMSN(:)
@@ -173,6 +179,7 @@ REAL(KIND=JPRB),    INTENT(INOUT):: PFWEL1(:)
 REAL(KIND=JPRB),    INTENT(INOUT):: PFWE234(:)
 
 REAL(KIND=JPRB),    INTENT(OUT)  :: PROS(:)
+REAL(KIND=JPRB),    INTENT(OUT)  :: PIRFL(:)
 REAL(KIND=JPRB),    INTENT(OUT)  :: PCFW(:,:)
 REAL(KIND=JPRB),    INTENT(OUT)  :: PRHSW(:,:)
 REAL(KIND=JPRB),    INTENT(OUT)  :: PSAWGFL(:,:)
@@ -227,6 +234,7 @@ ASSOCIATE(LESSRO=>YDSOIL%LESSRO, RDAW=>YDSOIL%RDAW, &
  & RVROOTSAL3D=>PSSDP3(:,:,SSDP3D_ID%NRVROOTSAL3D), RVROOTSAH3D=>PSSDP3(:,:,SSDP3D_ID%NRVROOTSAH3D), &
  & LEURBAN=>YDURB%LEURBAN, RURBALP=>YDURB%RURBALP, RURBCON=>YDURB%RURBCON,&
  & RURBLAM=>YDURB%RURBLAM, RURBSAT=>YDURB%RURBSAT, RURBSRES=>YDURB%RURBSRES, &
+ & LEIRRIGATION=>YDSOIL%LEIRRIGATION, &
  & RDMAXM3D=>PSSDP3(:,:,SSDP3D_ID%NRDMAXM3D), RDMINM3D=>PSSDP3(:,:,SSDP3D_ID%NRDMINM3D))
 
 ZEPSILON=100._JPRB*EPSILON(ZEPSILON)
@@ -416,6 +424,18 @@ DO JL=KIDIA,KFDIA
       ENDIF
     ENDIF
 !
+
+    IF (LEIRRIGATION) THEN
+!         CALCULATE OPTIMAL IRRIGATION FLUX BASED ON DEMAND
+!          ---------------------------------------------------
+        PIRFL(JL)=MAX(0.0_JPRB, -1.0_JPRB*(PEVAPMU(JL)-PEVAPTI(JL,4)))
+        PIRFL(JL)=PIRFL(JL)*MAX(0.0_JPRB, PIRFR(JL)) !multiply by fraction of irrigation
+! further rules inspired by CLM https://doi.org/10.1029/2022MS003074
+! and ORCHIDEE https://egusphere.copernicus.org/preprints/2025/egusphere-2025-2491/egusphere-2025-2491.pdf
+    ELSE
+        PIRFL(JL)=0.0_JPRB
+    ENDIF
+
     IF (LESSRO) THEN
 
 !          SURFACE RUNOFF DUE TO VARIABLE INFILTRATION CAPACITY (VIC)
@@ -502,8 +522,8 @@ DO JL=KIDIA,KFDIA
       ZROT=ZROL+ZROC
     ENDIF
 
-!  Contribution of throughfall, melting, and runoff to the r.h.s.
-    ZWSFL=PTSFL(JL)+PMSN(JL)+PTSFC(JL)-ZROT
+!  Contribution of throughfall, melting, irrigation and runoff to the r.h.s.
+    ZWSFL=PTSFL(JL)+PMSN(JL)+PTSFC(JL)+PIRFL(JL)-ZROT
 
 !*             TILE CONTRIBUTIONS
 !              ------------------
@@ -557,6 +577,7 @@ DO JL=KIDIA,KFDIA
     PCFW(JL,1)=0.0_JPRB
     PRHSW(JL,1)=0.0_JPRB
     PROS(JL)=0.0_JPRB
+    PIRFL(JL)=0.0_JPRB
     PSAWGFL(JL,1)=0.0_JPRB
     ZSAWEXT(JL,1)=0.0_JPRB
   ENDIF

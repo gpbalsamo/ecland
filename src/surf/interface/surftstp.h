@@ -26,8 +26,8 @@ SUBROUTINE SURFTSTP    (YSURF, KIDIA , KFDIA , KLON  , KLEVS , KCWS, KTILES,&
  & PHLICEM1M,PHLMLM1M,PGEMU,PLDEPTH,LDLAKE,PCLAKE, &
  & PRSFC   ,PRSFL,& 
  & PSLRFL  ,PSSFC   ,PSSFL,& 
- & PCVL    ,PCVH    ,PCUR    ,PWLMX   ,PEVAPSNW,&
- & PUSRF   ,PVSRF   ,PTSRF,& 
+ & PCVL    ,PCVH    ,PCUR    ,PIRFR   ,PEVAPMU  ,&
+ & PWLMX   ,PEVAPSNW,PUSRF   ,PVSRF   ,PTSRF    ,& 
  & PZO     ,PHO     ,PHO_INV ,PDO     ,POCDEPTH ,&
  & PUO0    ,PVO0    ,PUOC    ,PVOC    ,PTO0     ,&
  & PSO0    ,PADVT   ,PADVS   ,PTRI0   ,PTRI1    ,&
@@ -36,7 +36,7 @@ SUBROUTINE SURFTSTP    (YSURF, KIDIA , KFDIA , KLON  , KLEVS , KCWS, KTILES,&
  & PWSEMEAN,PWSFMEAN  ,&
  & LNEMOICETHK, PTHKICE, &
 !-DIAGNOSTICS OUTPUT
- & PTSDFL  , PROFD , PROFS,&
+ & PTSDFL  , PROFD , PROFS, PIRFL,&
  & PWFSD   , PMELT , PFWEV, PENES,&
  & PDIFM   , PDIFT , PDIFS, POTKE,&
  & PRESPBSTR,PRESPBSTR2,PBIOMASS_LAST,&                      !CTESSEL
@@ -181,6 +181,8 @@ USE ISO_C_BINDING
 !    *PCVL*       LOW VEGETATION COVER  (CORRECTED)              (0-1)
 !    *PCVH*       HIGH VEGETATION COVER (CORRECTED)              (0-1)
 !    *PCUR*       URBAN COVER (PASSIVE)                          (0-1)
+!    *PIRFR*      IRRIGATION FRACTION                            (0-1)
+!    *PEVAPMU*    POTENTIAL EVAPORATION                          kg/m**2
 !    *PWLMX*      MAXIMUM SKIN RESERVOIR CAPACITY                kg/m**2
 !    *PEVAPSNW*   EVAPORATION FROM SNOW UNDER FOREST           KG/M**2/S
 !    *POCDEPTH*     OCEAN DEPTH FOR OCEAN MIXED LAYER MODEL    (m)  
@@ -221,6 +223,7 @@ USE ISO_C_BINDING
 !    *PTSDFL*     UPWARD FLUX BETWEEN SURFACE AND DEEP LAYER   W/M**2
 !    *PROFD*      DEEP LAYER RUN-OFF                          kg/m**2/s
 !    *PROFS*      SURFACE RUN-OFF                             kg/m**2/s
+!    *PIRFL*      IRRIGATION FLUX                             KG/M**2/S
 !    *PWFSD*      WATER FLUX BETWEEN LAYER 1 AND 2            kg/m**2/s
 !    *PMELT*      WATER FLUX CORRESPONDING TO SNOW MELT       kg/m**2/s
 !    *PFWEV*      EVAPORATION OVER LAND SURFACE               kg/m**2/s
@@ -278,6 +281,7 @@ USE ISO_C_BINDING
 !     E. Dutra             09-11-16 snow 2009 cleaning 
 !     E. Dutra             10/10/2014      net longwave tiled 
 !     I. Ayan-Miguez       June 2023 Add object with spatially distributed parameters
+!     G. Balsamo           04/11/2025      Include irrigation
 
 IMPLICIT NONE
 
@@ -386,6 +390,8 @@ REAL(KIND=JPRB)   ,INTENT(IN)    :: PSSFL(KLON)
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PCVL(KLON)
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PCVH(KLON)
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PCUR(KLON)
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PIRFR(KLON)
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PEVAPMU(KLON)
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PWLMX(KLON)
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PEVAPSNW(KLON)
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PUSRF(KLON)
@@ -394,6 +400,7 @@ REAL(KIND=JPRB)   ,INTENT(IN)    :: PTSRF(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PTSDFL(KLON) 
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PROFD(KLON) 
 REAL(KIND=JPRB)   ,INTENT(INOUT) :: PROFS(KLON)
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PIRFL(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PWFSD(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PMELT(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PFWEV(KLON)
