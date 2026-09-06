@@ -134,6 +134,7 @@ USE YOMSURF_SSDP_MOD, ONLY : SSDP3D_ID, NSSDP3D
 !                                               use of parameter values defined in namelist
 !     I. Ayan-Miguez (BSC) July 2023         Add PSSDP3 object for spatially distributed parameters
 !     J. McNorton            24/08/2022      urban tile
+!     G. Balsamo    ECMWF    10-02-2026      Runoff fixes over orography and frozen soils
 !     ------------------------------------------------------------------
 
 IMPLICIT NONE
@@ -199,7 +200,7 @@ REAL(KIND=JPRB) :: Z_RHOH20, ZD, &
  & ZCONW1, ZLYEPS, ZLYSIC, ZVOL, ZROS, ZSUM, ZLIMRS, ZWSATM, ZWRESTM, ZWFAC_S, ZWK ,ZWMK, &
  & ZWFLOOR, ZSEWP, ZKWPFLOOR, ZTOTAL_DEPTH, ZBEDROCKFAC
 REAL(KIND=JPRB), PARAMETER :: RZBEDROCK_MIN=1.0_JPRB ! floor for RDBEDROCK, see LEBEDROCKLIM below
-REAL(KIND=JPRD) :: ZDD, ZKD, ZSE, ZSEMAX, ZDMAX_D, ZSEMIN, ZDMIN_D
+REAL(KIND=JPRD) :: ZDD, ZKD, ZSE, ZSEMAX, ZDMAX_D, ZSEMIN, ZDMIN_D, ZFMAX
 
 REAL(KIND=JPRB) :: ZFRK(KLON,KLEVS)
 
@@ -257,8 +258,20 @@ ENDIF
 !*          2.1 Preliminary quantities related to root extraction
 !               Compute first liquid fraction of soil water to 
 !               be used later in stress functions.
+! ZF and ZLIQ are solved over the water-balance column 1:KLEVS_WB below, but both
+! are read over the full 1:KLEVS -- ZF by the DDH soil-ice diagnostic, ZLIQ by root
+! extraction at ZROOTW. Initialise the whole array with meaningful values first, so
+! that any merged layers below KLEVS_WB (KCWS>0) carry no frozen fraction and the
+! corresponding unfrozen liquid water content, rather than whatever was on the stack.
 DO JK=1,KLEVS
   DO JL=KIDIA,KFDIA
+    ZF(JL,JK)=0.0_JPRB
+    ZLIQ(JL,JK)=MAX(RWPWPM3D(JL,JK),MIN(RWCAPM3D(JL,JK),PWSAM1M(JL,JK)))
+  ENDDO
+ENDDO
+
+DO JL=KIDIA,KFDIA
+  DO JK=1,KLEVS_WB
     IF(PTSAM1M(JL,JK) < RTF1.AND.PTSAM1M(JL,JK) > RTF2) THEN
       ZF(JL,JK)=0.5_JPRB*(1.0_JPRB-SIN(RTF4*(PTSAM1M(JL,JK)-RTF3)))
     ELSEIF (PTSAM1M(JL,JK) <= RTF2) THEN
@@ -266,6 +279,11 @@ DO JK=1,KLEVS
     ELSE
       ZF(JL,JK)=0.0_JPRB
     ENDIF
+  ENDDO
+  ZFMAX=SUM(ZF(JL,1:KLEVS_WB)*RDAW(1:KLEVS_WB))/SUM(RDAW(1:KLEVS_WB))
+  DO JK=1,KLEVS_WB
+! Assume partial frozen soil is permeable via macropores (Mohammed et al. 2019 HESS)
+    ZF(JL,JK)=MIN(ZF(JL,JK),REAL(ZFMAX,JPRB))
     ZLIQ(JL,JK)=MAX(RWPWPM3D(JL,JK),MIN(RWCAPM3D(JL,JK),PWSAM1M(JL,JK)*(1._JPRB-ZF(JL,JK))))
   ENDDO
 ENDDO
