@@ -234,6 +234,9 @@ SELECT CASE(CNAME)
   CASE('LDEPTH')
     CLNAME='lake depth'
     CUNITS='m'
+  CASE('LDEPTHF')
+    CLNAME='lake and floodplain depth'
+    CUNITS='m'
   CASE('CLAKE')
     CLNAME='lake cover'
     CUNITS='-'

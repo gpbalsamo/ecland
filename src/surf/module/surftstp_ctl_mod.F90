@@ -904,7 +904,7 @@ IF (LEFLAKE) THEN
                  & PTLICEM1M,PTLMNWM1M,PTLWMLM1M,PTLBOTM1M,PTLSFM1M, & 
                  & PHLICEM1M,PHLMLM1M,&
                  & ZTLICE,ZTLMNW,ZTLWML,&
-                 & ZTLBOT,ZTLSF,ZHLICE,ZHLML )
+                 & ZTLBOT,ZTLSF,ZHLICE,ZHLML,ZTSA )
 		 
 ELSE ! The prognostic variables are set equal to previous timestep
 

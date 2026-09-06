@@ -82,7 +82,7 @@ USE YOMGPD1S , ONLY : GPD &
                      &,VFCVL, VFCUR &
                      &,VFCVH,VFTVL,VFTVH,VFSST,VFCI,VFCIL,VFSOTY &
                      &,VFSDOR, VFCO2TYP,VFISOP_EP &
-                     &,VFLDEPTH,VFCLAKE, VFCLAKEF &
+                     &,VFLDEPTH,VFLDEPTHF,VFCLAKE, VFCLAKEF &
                      &,VFZO,VFHO,VFHO_INV,VFDO,VFOCDEPTH,VFADVT &
                      &,VFADVS, VFTRI0, VFTRI1, VFSWDK_SAVE &
                      &,VFLAIL,VFBVOCLAIL,VFLAIH,VFBVOCLAIH,VFFWET,VFRSML,VFRSMH,VFR0VT&
@@ -466,17 +466,17 @@ VFRSMH(:,:)=0._JPRB
 
 !! 2D FIELDS
 IF (LEURBAN) THEN
-NVARS2D=20
+NVARS2D=21
 CVARS2D(1:NVARS2D)=(/ 'landsea    ','geopot     ','cvl        ', &
                       'cvh        ','tvl        ','tvh        ','cu         ','sotype     ','sdor       ',&
                       'sst        ','seaice     ','glacierMask','LDEPTH     ','CLAKE      ','z0m        ','lz0h       ',&
-                      'x          ','CLAKEF     ','Ctype      ','ISOP_EP    '/)
+                      'x          ','CLAKEF     ','LDEPTHF    ','Ctype      ','ISOP_EP    '/)
 ELSE
-NVARS2D=19
+NVARS2D=20
 CVARS2D(1:NVARS2D)=(/ 'landsea    ','geopot     ','cvl        ', &
                       'cvh        ','tvl        ','tvh        ','sotype     ','sdor       ',&
                       'sst        ','seaice     ','glacierMask','LDEPTH     ','CLAKE      ','z0m        ','lz0h       ',&
-                      'x          ','CLAKEF     ','Ctype      ','ISOP_EP    '/)
+                      'x          ','CLAKEF     ','LDEPTHF    ','Ctype      ','ISOP_EP    '/)
 VFCUR(:,:)=0._JPRB !Creates an array of zeros if urban is not used
 ENDIF
 
@@ -572,6 +572,14 @@ DO IVAR=1,NVARS2D
        ELSE
          RECV_BUF=PACK(ZBUF,LMASK(ISTP:IENP))
          CALL UNPACK_BUFFER(VFCLAKEF, RECV_BUF)
+       ENDIF
+    CASE('LDEPTHF')
+       IF ( STATUS /= 0 ) THEN
+         WRITE(NULOUT,*) 'LDEPTHF not found, set == to LDEPTH'
+         VFLDEPTHF(:,:)=VFLDEPTH(:,:)
+       ELSE
+         RECV_BUF=PACK(ZBUF,LMASK(ISTP:IENP))
+         CALL UNPACK_BUFFER(VFLDEPTHF, RECV_BUF)
        ENDIF
     CASE('Ctype')
       IF (LEC4MAP) THEN

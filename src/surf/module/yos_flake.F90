@@ -173,6 +173,21 @@ REAL (KIND = JPRD):: RCONV_EQUIL_A
 REAL (KIND = JPRD):: RCONV_EQUIL_B
 REAL (KIND = JPRD):: RCONV_EQUIL_C
 
+! Parameter(s) used to apply FLake to inundated water (IW)
+REAL (KIND = JPRD):: RDEPTH_W_MIX_IW   ! Minimum depth of inundated water below which
+                                       ! the water column is taken to be fully mixed [m]
+REAL (KIND = JPRD):: TMNW_NDG_TIMESCL  ! E-folding time scale to nudge mean lake/IW temperature 
+                                       ! to soil temperature (at level 1)
+                                       ! (N.B. set TMNW_NDG_TIMESCL to a very large value to switch off nudging)
+REAL (KIND = JPRD):: TMNW_NDG_RDSCL    ! Reciprocal of e-folding depth scale used to nudge 
+                                       ! mean lake/IW temperature to soil temperature 
+                                       ! (N.B. make sure that nudging is only applied to shallow lakes/IWs)
+
+! Parameter(s) of FLake bottom sediment parameterization
+LOGICAL :: LFLAKE_BOTSED              ! .TRUE. means that interaction with bottom sediments is active
+REAL (KIND = JPRD):: RDEPTH_BOTSED    ! Depth of thermally active layer of bottom sediments
+REAL (KIND = JPRD):: RPHI_BOTSED_PR0  ! T shape-function derivative for bottom sediments
+
 LOGICAL :: LEFLAKE
 
 INTEGER (KIND = JPIM):: NFLAKEV

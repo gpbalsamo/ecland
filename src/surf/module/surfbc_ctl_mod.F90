@@ -276,11 +276,14 @@ ENDDO
 
 !         Miscellaneous fields needed elsewhere
 DO JL=KIDIA,KFDIA
-  LDLAND(JL)=PLSM(JL) > 0.5_JPRB
-  LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. (PCLAKE(JL) > 0.5_JPRB))  !all land points and resolved lakes are going in the lake calculations
+  LDLAND(JL)=PLSM(JL) > 0.01_JPRB
+  LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. (PCLAKE(JL) > (1.0_JPRB-PLSM(JL)/2.0_JPRB)))  !all land points and dominant lakes are going in the lake calculations
   LDSICE(JL)=(PCI(JL) > RCIMIN).AND.(.NOT. LDLAND(JL)).AND.(.NOT. LDLAKE(JL))  ! FOR SEAMLESS TREATMENT OF ICE OVER WATER
   LDLICE(JL)=((PCIL(JL) > RCIMIN).AND.(LDLAND(JL)))  ! FOR SEAMLESS TREATMENT OF ICE OVER LAND
   LDNH(JL)=PGEMU(JL) > 0.0_JPRB
+  IF (KSOTY(JL) == 0_JPIM .AND. LDLAKE(JL)) THEN  !change the Soil Type under lake points
+    KSOTY(JL)=2_JPIM
+  ENDIF
   IF (.NOT.LESN09) THEN 
     ZCVS(JL)=MAX(0._JPRB,MIN(1.0_JPRB,SUM(PSNM1M(JL,:))*RQSNCR))
   ELSE

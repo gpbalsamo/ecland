@@ -52,6 +52,7 @@ SAVE
 ! VFCI    - sea ice fraction
 ! VFCIL   - land ice fraction
 ! VFLDEPTH- LAKE DEPTH                                           !FLAKE
+! VFLDEPTHF-LAKE VARIABLE DEPTH                                  !FLAKE/CMF
 ! VFCLAKE - LAKE FRACTION                                        !FLAKE
 ! VFZO    - vertical layer depth of ocean mixed layer model      !KPP
 ! VFHO    - vertical layer thickness of ocean mixed layer model  !KPP
@@ -268,7 +269,8 @@ REAL(KIND=JPRB),POINTER:: VDIETL(:,:,:) => NULL()
 REAL(KIND=JPRB),POINTER:: VDTSKTL(:,:,:) => NULL()
 
 REAL(KIND=JPRB),POINTER:: VFLDEPTH(:,:) => NULL() !FLAKE
-REAL(KIND=JPRB),POINTER:: VFCLAKE(:,:) => NULL()  !FLAKE 
+REAL(KIND=JPRB),POINTER:: VFLDEPTHF(:,:) => NULL() !FLAKE + Flood
+REAL(KIND=JPRB),POINTER:: VFCLAKE(:,:) => NULL()  !FLAKE
 REAL(KIND=JPRB),POINTER:: VFCLAKEF(:,:) => NULL() !FLAKE + Flood
 
 REAL(KIND=JPRB),POINTER:: VFZO(:,:,:) => NULL()    !KPP
