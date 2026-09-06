@@ -330,6 +330,10 @@ CONTAINS
     LOGICAL :: LEUNIFORMROOT = .FALSE.
     LOGICAL :: LEBEDROCKLIM = .FALSE.
     LOGICAL :: LEGWRECHARGE = .FALSE.
+!   Fraction of the VIC-partitioned bottom drainage allowed to reach the
+!   aquifer -- see yos_soil.F90. 1.0 is the pre-existing behaviour, bit for
+!   bit, so an experiment that never mentions it is unchanged.
+    REAL(KIND=JPRB) :: RWTDRECHARGE = 1.0_JPRB
 
     REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
@@ -389,6 +393,7 @@ CONTAINS
     TMP_SURF%LEUNIFORMROOT = LEUNIFORMROOT
     TMP_SURF%LEBEDROCKLIM  = LEBEDROCKLIM
     TMP_SURF%LEGWRECHARGE  = LEGWRECHARGE
+    TMP_SURF%RWTDRECHARGE  = RWTDRECHARGE
 
     !     ------------------------------------------------------------------
     !*         3.     PRINT FINAL VALUES
@@ -430,6 +435,7 @@ CONTAINS
     WRITE(NULOUT,*) '   LEUNIFORMROOT  = ', LEUNIFORMROOT
     WRITE(NULOUT,*) '   LEBEDROCKLIM   = ', LEBEDROCKLIM
     WRITE(NULOUT,*) '   LEGWRECHARGE   = ', LEGWRECHARGE
+    WRITE(NULOUT,*) '   RWTDRECHARGE   = ', RWTDRECHARGE
 
 
     IF (LHOOK) CALL DR_HOOK('RDNML_SOIL',1,ZHOOK_HANDLE)

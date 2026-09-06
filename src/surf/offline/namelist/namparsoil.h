@@ -20,5 +20,8 @@ NAMELIST/NAMPARSOIL/&
 !   plain baseline ecLand -- see the block comment ahead of the WRITE lines in
 !   RDNML_SOIL for why running all six .TRUE. together is still expected to
 !   work.
-& , LEWVFLUX, LEWPFLOOR, LEFRZFLOOR, LEUNIFORMROOT, LEBEDROCKLIM, LEGWRECHARGE
+& , LEWVFLUX, LEWPFLOOR, LEFRZFLOOR, LEUNIFORMROOT, LEBEDROCKLIM, LEGWRECHARGE&
+! * LEGWRECHARGE recharge throttle -- see yos_soil.F90. Defaults to 1.0 in
+!   RDNML_SOIL, i.e. unset means the pre-existing behaviour bit for bit.
+& , RWTDRECHARGE
 !     ------------------------------------------------------------------

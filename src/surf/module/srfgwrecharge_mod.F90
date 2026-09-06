@@ -402,7 +402,18 @@ DO JL=KIDIA,KFDIA
       ENDIF
       ZROS = MAX(ZROS,0.0_JPRB)
 
-      ZRECHARGE = MAX(0.0_JPRB,ZDRAINDEPTH-ZROS) ! water-equivalent depth (m)
+!            RWTDRECHARGE throttles what the VIC partition would otherwise
+!            hand the aquifer. The partition alone reduces to
+!            (WTD/RGWLATDEPTH)**(ZBWS/(1+ZBWS)) and ZBWS is clamped to
+!            [0.01,0.5], so the exponent never exceeds 1/3 and the recharge
+!            fraction stays between 0.65 and 0.99 across the whole legal range
+!            of the shape parameter at a 27 m water table -- which is why
+!            sweeping RGWLATSIGMIN/RGWLATSIGMAX/RGWLATDEPTH could not move the
+!            42-site score off 16/29 (179176e). Whatever is withheld here stays
+!            in the bottom-layer drainage and reaches PROFD/Qsb through
+!            PGWDRAINUSED, so the balance closes with no extra bookkeeping.
+!            Defaults to 1.0 = the pre-existing behaviour, bit for bit.
+      ZRECHARGE = YDSOIL%RWTDRECHARGE*MAX(0.0_JPRB,ZDRAINDEPTH-ZROS) ! water-equivalent depth (m)
     ELSE
       ZRECHARGE = 0.0_JPRB
     ENDIF
