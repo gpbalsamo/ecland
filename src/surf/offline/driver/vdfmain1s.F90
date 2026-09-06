@@ -20,7 +20,7 @@ SUBROUTINE VDFMAIN1S  ( &
  & PZ0M   , PZ0H   , &
  & PVDIS  , PAHFLEV, PAHFLSB, PFWSB  , &
  & PU10M  , PV10M  , PT2M   , PD2M   , PQ2M   , PZINV  , &
- & PSSRFLTI,PEVAPSNW,PEXDIAG,PGUST  , PZIDLWV, &
+ & PSSRFLTI,PEVAPSNW,PEVAPMU, PEXDIAG,PGUST  , PZIDLWV, &
  ! OUTPUT TENDENCIES
  & PTE    , PQE    , PVOM   , PVOL   , &
  & PTENC  , PTSKE1 , &
@@ -249,6 +249,7 @@ SUBROUTINE VDFMAIN1S  ( &
 !    *PSSRFLTI*     NET SHORTWAVE RADIATION FLUX AT SURFACE, FOR
 !                      EACH TILE                                  W/M2
 !    *PEVAPSNW*     EVAPORATION FROM SNOW UNDER FOREST            KG/(M2*S)
+!    *PEVAPMU*      POTENTIAL EVAPORATION (UNSTRESSED LOW VEG)    KG/M2/S
 !    *PSTRTU*       TURBULENT FLUX OF U-MOMEMTUM            KG*(M/S)/(M2*S)
 !    *PSTRTV*       TURBULENT FLUX OF V-MOMEMTUM            KG*(M/S)/(M2*S)
 !    *PDIFTS*       TURBULENT FLUX OF HEAT                         J/(M2*S)
@@ -470,6 +471,7 @@ REAL(KIND=JPRB)   ,INTENT(OUT)   :: PZINV(KLON)
 !1s INTEGER(KIND=JPIM),INTENT(OUT)   :: KHPBLN(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PSSRFLTI(KLON,KTILES)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PEVAPSNW(KLON)
+REAL(KIND=JPRB)   ,INTENT(INOUT) :: PEVAPMU(KLON)
 REAL(KIND=JPRB)   ,INTENT(INOUT) :: PEXDIAG(KLON,KDIAG)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PGUST(KLON)
 REAL(KIND=JPRB)                  :: PZIDLWV(KLON)
@@ -1079,6 +1081,10 @@ CALL VDFDIFH1S (KIDIA  , KFDIA  , KLON   , KLEV   , ITOP   , KTILES, KTVL, KTVH,
             & ZTSKTIP1,ZSLGE  , PTE    , ZQTE, &
             & PEVAPTI, PAHFSTI, ZAHFLTI, PSLRFLTI   , ZG0,PEVAPTIU)
 
+! ! Calculate potential evaporation as the unstressed evaporation of tile 4
+DO JL=KIDIA,KFDIA
+  PEVAPMU(JL)= PEVAPTIU(JL,4)
+ENDDO
 ! ! Update Tiled LW components: what is done in surfexcdriver does not acconnts for the LWtiling ....
 ! DO JT=1,KTILES
 !   ! upwad

@@ -79,7 +79,7 @@ USE YOMGPD1S , ONLY : GPD &
                      &,VFALUVP,VFALUVD,VFALNIP,VFALNID &
                      &,VFALUVI,VFALUVV,VFALUVG &
                      &,VFALNII,VFALNIV,VFALNIG &
-                     &,VFCVL, VFCUR &
+                     &,VFCVL, VFCUR, VFIRFR &
                      &,VFCVH,VFTVL,VFTVH,VFSST,VFCI,VFCIL,VFSOTY &
                      &,VFSDOR, VFCO2TYP,VFISOP_EP &
                      &,VFLDEPTH,VFLDEPTHF,VFCLAKE, VFCLAKEF &
@@ -92,7 +92,7 @@ USE YOMGC1S  , ONLY : LMASK
 USE YOMDPHY  , ONLY : NLON, NLAT, NPOI, NVSF, NGCC, NLALO  ,NVHILO, NCLIMDAT,NCOM, NPOIP,NPOIPALL, NPOIALL, NPOIOFF
 USE YOMLUN1S , ONLY : NULOUT, RMISS
 USE YOMLOG1S , ONLY : NDIMCDF
-USE YOEPHY   , ONLY : LELAIV, LEURBAN, LEC4MAP, LBVOC_EMIS
+USE YOEPHY   , ONLY : LELAIV, LEURBAN, LEIRRIGATION, LEC4MAP, LBVOC_EMIS
 USE NETCDF
 USE NETCDF_UTILS, ONLY: NCERROR
 USE BUFFER_UTILS, ONLY: PACK_BUFFER, UNPACK_BUFFER
@@ -465,10 +465,10 @@ VFRSML(:,:)=0._JPRB
 VFRSMH(:,:)=0._JPRB
 
 !! 2D FIELDS
-IF (LEURBAN) THEN
-NVARS2D=21
+IF (LEURBAN.AND.LEIRRIGATION) THEN
+NVARS2D=22
 CVARS2D(1:NVARS2D)=(/ 'landsea    ','geopot     ','cvl        ', &
-                      'cvh        ','tvl        ','tvh        ','cu         ','sotype     ','sdor       ',&
+                      'cvh        ','tvl        ','tvh        ','cu         ','irrfrc     ','sotype     ','sdor       ',&
                       'sst        ','seaice     ','glacierMask','LDEPTH     ','CLAKE      ','z0m        ','lz0h       ',&
                       'x          ','CLAKEF     ','LDEPTHF    ','Ctype      ','ISOP_EP    '/)
 ELSE
@@ -478,6 +478,7 @@ CVARS2D(1:NVARS2D)=(/ 'landsea    ','geopot     ','cvl        ', &
                       'sst        ','seaice     ','glacierMask','LDEPTH     ','CLAKE      ','z0m        ','lz0h       ',&
                       'x          ','CLAKEF     ','LDEPTHF    ','Ctype      ','ISOP_EP    '/)
 VFCUR(:,:)=0._JPRB !Creates an array of zeros if urban is not used
+VFIRFR(:,:)=0._JPRB !Creates an array of zeros if irrigation is not used
 ENDIF
 
 DO IVAR=1,NVARS2D
@@ -521,6 +522,10 @@ DO IVAR=1,NVARS2D
       IF ( STATUS /= 0 ) CALL ABORT
       RECV_BUF=PACK(ZBUF,LMASK(ISTP:IENP))
       CALL UNPACK_BUFFER(VFCUR, RECV_BUF)
+    CASE('irrfrc')
+      IF ( STATUS /= 0 ) CALL ABORT
+      RECV_BUF=PACK(ZBUF,LMASK(ISTP:IENP))
+      CALL UNPACK_BUFFER(VFIRFR, RECV_BUF)
     CASE('sotype')
       IF ( STATUS /= 0 ) CALL ABORT
       RECV_BUF=PACK(ZBUF,LMASK(ISTP:IENP))
@@ -599,7 +604,7 @@ DO IVAR=1,NVARS2D
   END SELECT
   IF( MYPROC == 1 ) THEN
     IF (STATUS /= 0) THEN
-      CALL MINMAX(CVAR,ZREALD,NMX,NMY,LMASK,NULOUT)
+      CALL MINMAX(CVAR,ZREALD,NMX,NMY,LMASK(ISTP:IENP),NULOUT)
     ENDIF
   ENDIF
   CALL MPL_BARRIER()

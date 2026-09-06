@@ -53,6 +53,7 @@ LOGICAL :: LMFTRAC
 LOGICAL :: LERAIN
 LOGICAL :: LEVGEN
 LOGICAL :: LESSRO
+LOGICAL :: LEIRRIGATION
 INTEGER(KIND=JPIM) :: NALBEDOSCHEME
 INTEGER(KIND=JPIM) :: NEMISSSCHEME
 LOGICAL :: LEMWAVE
@@ -121,6 +122,7 @@ INTEGER (KIND=JPIM) :: NCWS ! Number of layers to merge at the end for the soil 
 !     A. Agusti-Panareda ECMWF 18-11-2020 Include LEAIRCO2COUP (use variable air CO2 in photosynthesis)
 !     A. Agusti-Panareda ECMWF 02-06-2021 Include photosynthesis parameters that are optimized with observations
 !     I. Ayan-Miguez June 2023 Include LESSDP_CALIB (activate calibrated surface spatially distributed parameters)
+!     G. Balsamo   ECMWF   08-01-2006  Include Irrigation LEIRRIGATION
 !     ------------------------------------------------------------------
 
 !  NAME     TYPE     PURPOSE
@@ -142,6 +144,7 @@ INTEGER (KIND=JPIM) :: NCWS ! Number of layers to merge at the end for the soil 
 ! LESURF : LOGICAL : TURN THE INTERACTIVE SURFACE PROCESSES ON
 ! LEVGEN : LOGICAL : TURN THE VAN GENUCHTEN HYDROLOGY ON
 ! LESSRO : LOGICAL : TURN THE SUB-GRID SURFACE RUNOFF ON
+! LEIRRIGATION : LOGICAL : TURN THE IRRIGATION ON
 ! LEVDIF : LOGICAL : TURN THE VERTICAL DIFFUSION ON
 ! LEO3CH : LOGICAL : TURN THE O3 CHEMISTRY ON (for EC prog. ozone)
 ! LNEEONLINE: LOGICAL: USE ON-LINE CTESSEL IF TRUE 

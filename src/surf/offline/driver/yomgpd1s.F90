@@ -29,6 +29,7 @@ SAVE
 ! VFCVL   - low vegetation cover
 ! VFCVH   - high vegetation cover
 ! VFCUR   - urban cover (PASSIVE)
+! VFIRFR  - irrigation fraction
 ! VFTVL   - low vegetation type
 ! VFTVH   - high vegetation type
 !CORRECT THESE REPEATED ENTIRES 
@@ -217,6 +218,7 @@ REAL(KIND=JPRB),POINTER:: VFISOP_EP(:,:) => NULL()
 REAL(KIND=JPRB),POINTER:: VFCVL(:,:) => NULL()
 REAL(KIND=JPRB),POINTER:: VFCVH(:,:) => NULL()
 REAL(KIND=JPRB),POINTER:: VFCUR(:,:) => NULL()
+REAL(KIND=JPRB),POINTER:: VFIRFR(:,:) => NULL()
 
 
 REAL(KIND=JPRB),POINTER:: VFTVL(:,:) => NULL()
