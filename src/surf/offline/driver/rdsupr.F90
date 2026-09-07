@@ -432,6 +432,19 @@ DO IVAR=1,NVARS2D
           ZREALD(:) = 100._JPRB ! water-table depth "no data" default (LEGWRECHARGE)
           WRITE(NULOUT,'(A)') CVAR//' Set to default 100m'
         ENDIF
+!       Clip to [RGWTD_MIN,RDBEDROCK] -- SRFGWRECHARGE_MOD's own clamp bounds
+!       (currently 0.5m / 100.0m, matching this file's "no data" default above).
+!       An init/restart file can legitimately carry a target deeper than
+!       RDBEDROCK (e.g. Fan et al. 2017 water-table depth, which reaches
+!       257m at CN-Din and 197m at FR-Pue against RDBEDROCK=100m) -- reading
+!       that in unclipped means SRFGWRECHARGE's own per-timestep clamp does
+!       the correction instead, in one step, with no matching Qrec/Qcap flux:
+!       measured as a ~15700 kg/m2 DelAquifer jump at CN-Din's very first
+!       timestep against a Qrec of 0.047 kg/m2 that step, i.e. water
+!       conjured from nowhere in the aquifer accounting. Clipping here makes
+!       the initial condition itself consistent with the bounds the scheme
+!       enforces from then on, so there is no such correction to account for.
+        ZREALD(:) = MAX(0.5_JPRB,MIN(100._JPRB,ZREALD(:)))
       ENDIF
       CALL MPL_SCATTERV(PRECVBUF=ZBUF(:),KROOT=1,PSENDBUF=ZREALD(:),KSENDCOUNTS=NPOIPALL(:),CDSTRING="RDSUPR:WTDNU0")
       RECV_BUF = PACK(ZBUF(:),LMASK(ISP:IENP))
