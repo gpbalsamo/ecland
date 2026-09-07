@@ -322,7 +322,7 @@ REAL(KIND=JPRB), PARAMETER :: RGWLATSIGMAX=525.0_JPRB
 REAL(KIND=JPRB), PARAMETER :: RGWLATDEPTH=100.0_JPRB
 
 REAL(KIND=JPRB) :: ZDEPTH_UPPER, ZDEPTH_MID, ZDIST, ZCAPFLUX, ZEXTRACT
-REAL(KIND=JPRB) :: ZDRAIN, ZRECHARGE, ZDWTDDT, ZROEFF
+REAL(KIND=JPRB) :: ZRECHARGE, ZDWTDDT, ZROEFF
 REAL(KIND=JPRB) :: ZBWS, ZB1, ZBM, ZWSTATE, ZWMAX, ZCONW1
 REAL(KIND=JPRB) :: ZLYEPS, ZLIMRS, ZLYSIC, ZVOL, ZROS, ZDRAINDEPTH
 
@@ -418,8 +418,18 @@ DO JL=KIDIA,KFDIA
       ZRECHARGE = 0.0_JPRB
     ENDIF
 
-    ZDRAIN = ZRECHARGE/PTSPHY ! m/s
-    PRHSW(JL,JKBOT) = PRHSW(JL,JKBOT) - ZRECHARGE/RDAW(JKBOT)
+!            Recharge is a DIVERSION of the bottom-layer drainage, not an extra
+!            withdrawal from the soil. That water has already left the column
+!            through the free-drainage bottom boundary -- it is what SRFWINC
+!            diagnoses as PSAWGFL and what PGWDRAINFLUX above is built from --
+!            so debiting PRHSW for it here as well removed it twice while it
+!            arrived once. The budget
+!              Rainf+Snowf+Evap+Qs+Qsb-DelIntercept-DelSoilMoist-DelSWE
+!            then came out at exactly 2x the recharge instead of 1x (measured
+!            2.000/2.000/2.001/2.002 over a tenfold RWTDRECHARGE range), against
+!            0.016 mm/yr with LEGWRECHARGE off. Reporting the diversion through
+!            PGWDRAINUSED, which SURFTSTP_CTL subtracts from PROFD, is the whole
+!            of the bookkeeping needed.
     PGWDRAINUSED(JL) = ZRECHARGE*RHOH2O/PTSPHY ! m -> kg/m2/s
 
 !*         3.    NET WATER-TABLE-DEPTH TENDENCY, CLAMPED SO THE IMPLIED
