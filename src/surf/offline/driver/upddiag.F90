@@ -410,7 +410,21 @@ D1SVEGEV(KIDIA:KFDIA,IBL) = 0._JPRB ! not used
 D1SDSH(KIDIA:KFDIA,IBL) = 0._JPRB ! DelSoilHeat of skin layer (0)
 D1STNDH(KIDIA:KFDIA,IBL) = PDDHS%PDHTSS(KIDIA:KFDIA,1,15)     ! DelColdCont
 
-D1SSDS(KIDIA:KFDIA,IBL)=PTSPHY*PSURF%PSNSE1(KIDIA:KFDIA,1)
+! Sum over all KLEVSN snow layers, not just layer 1 -- PSNSE1 is documented
+! as MULTI-LAYER snow mass per unit surface (already kg/m2/s, no depth
+! weighting needed, unlike D1SWDS's soil DOT_PRODUCT with RDAW above).
+! Reading only layer 1 made DelSWE track that one layer's tendency
+! instead of the total snowpack's: correct while snow sits in a single
+! layer, but the multi-layer scheme periodically redistributes mass
+! between layers as the pack accumulates/consolidates/melts, and layer
+! 1's tendency alone can then swing tens of mm away from the true total
+! change -- even opposite in sign -- while the total itself moves
+! smoothly. Measured at US-GLE/CA-Qfo: reported DelSWE vs the actual
+! SWE(t)-SWE(t-1) diverging by 25-37mm at scattered single timesteps,
+! concentrated in the accumulation/melt season when redistribution is
+! most active, with SWEML confirming the true multi-layer state moves
+! smoothly through exactly these steps.
+D1SSDS(KIDIA:KFDIA,IBL)=PTSPHY*SUM(PSURF%PSNSE1(KIDIA:KFDIA,1:KLEVSN),DIM=2)
 D1SWLDS(KIDIA:KFDIA,IBL)=PTSPHY*PSURF%PWLE1(KIDIA:KFDIA)
 !write(6,*) 'delint',D1SWLDS
 
