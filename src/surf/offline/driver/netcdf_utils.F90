@@ -369,6 +369,15 @@ SELECT CASE(CNAME)
   CASE('irrflx')
     CLNAME='irrigation flux'
     CUNITS='kg m-2 s-1'
+  CASE('Qrec')
+    CLNAME='aquifer recharge (soil to water table)'
+    CUNITS='kg m-2 s-1'
+  CASE('Qcap')
+    CLNAME='capillary rise (water table to soil)'
+    CUNITS='kg m-2 s-1'
+  CASE('DelAquifer')
+    CLNAME='aquifer storage change'
+    CUNITS='kg m-2'
   CASE('DelSoilMoist')
     CLNAME='soil moisture content change'
     CUNITS='kg m-2'

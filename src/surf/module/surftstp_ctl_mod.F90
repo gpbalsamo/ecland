@@ -38,7 +38,7 @@ SUBROUTINE SURFTSTP_CTL(KIDIA , KFDIA , KLON  , KLEVS ,KCWS, KTILES,&
  & YDURB   ,YDAGS   ,YDMLM   ,YDOCEAN_ML,&
  & LNEMOICETHK, PTHKICE, &
 !-DIAGNOSTICS OUTPUT
- & PTSDFL  , PROFD , PROFS, PIRFL,&
+ & PTSDFL  , PROFD , PROFS, PIRFL, PGWREC, PGWCAP,&
  & PWFSD   , PMELT , PFWEV, PENES,&
  & PDIFM   , PDIFT , PDIFS, POTKE,&        
  & PRESPBSTR,PRESPBSTR2,PBIOMASS_LAST,&                            !CTESSEL  
@@ -267,6 +267,8 @@ USE ABORT_SURF_MOD
 !    *PROFD*      DEEP LAYER RUN-OFF                          kg/m**2/s
 !    *PROFS*      SURFACE RUN-OFF                             kg/m**2/s
 !    *PIRFL*      IRRIGATION FLUX                              KG/M**2/S
+!    *PGWREC*     AQUIFER RECHARGE, SOIL -> WATER TABLE (LEGWRECHARGE) KG/M**2/S
+!    *PGWCAP*     CAPILLARY RISE, WATER TABLE -> SOIL (LEGWRECHARGE)   KG/M**2/S
 !    *PWFSD*      WATER FLUX BETWEEN LAYER 1 AND 2            kg/m**2/s
 !    *PMELT*      WATER FLUX CORRESPONDING TO SNOW MELT       kg/m**2/s
 !    *PFWEV*      EVAPORATION OVER LAND SURFACE               kg/m**2/s
@@ -443,6 +445,8 @@ REAL(KIND=JPRB)   ,INTENT(OUT)   :: PTSDFL(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PROFD(KLON) 
 REAL(KIND=JPRB)   ,INTENT(INOUT) :: PROFS(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PIRFL(KLON)
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PGWREC(KLON)
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PGWCAP(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PWFSD(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PMELT(KLON) 
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PFWEV(KLON) 
@@ -867,6 +871,8 @@ ENDIF
 !               SUSSOIL) -- SEE SRFGWRECHARGE_MOD.
 
 ZGWDRAINUSED(:) = 0.0_JPRB
+PGWREC(:) = 0.0_JPRB
+PGWCAP(:) = 0.0_JPRB
 IF (YDSOIL%LEGWRECHARGE) THEN
   CALL SRFGWRECHARGE(KIDIA,KFDIA,KLON,KLEVS_WB,&
    & PTSPHY,&
@@ -878,7 +884,8 @@ IF (YDSOIL%LEGWRECHARGE) THEN
    & PSDOR,&
    & ZRHSW,&
    & PWTDE1,&
-   & ZGWDRAINUSED)
+   & ZGWDRAINUSED,&
+   & PGWCAP)
 ENDIF
 
 !*         4.3  SOLUTION OF TRIDIAGONAL SYSTEM OF EQUATIONS
@@ -907,6 +914,11 @@ CALL SRFWNG(KIDIA,KFDIA,KLON,KLEVS,KCWS,PTSPHY,KSOTY,&
 
 WHERE (LDLAND(KIDIA:KFDIA)) PROFD(KIDIA:KFDIA)=&
  & PROFD(KIDIA:KFDIA)+(ZSAWGFL(KIDIA:KFDIA,KLEVS_WB)-ZGWDRAINUSED(KIDIA:KFDIA))*PTSPHY
+! Export the two aquifer exchange fluxes as diagnostics (zero when LEGWRECHARGE
+! is off): PGWREC is what left the soil for the water table, PGWCAP what came
+! back the other way. They are reported separately because they oppose each
+! other -- the net WTD change tells you nothing about either.
+PGWREC(KIDIA:KFDIA) = ZGWDRAINUSED(KIDIA:KFDIA)
 
 ! Glacier runoff: add it to PROFS as additional meltwater from the ice surface
 ! ZMSNICE is already rescaled by fraction in snow routine
