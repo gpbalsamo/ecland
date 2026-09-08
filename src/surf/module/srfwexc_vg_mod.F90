@@ -365,8 +365,36 @@ DO JL=KIDIA,KFDIA
 !    ENDIF
     ZMFAC = RMFACM3D(JL,1_JPIM)
     ZWCONS=RWCONSM3D(JL,1_JPIM)
-    ZDMAX=RDMAXM3D(JL,1_JPIM)
-    ZDMIN=RDMINM3D(JL,1_JPIM)
+    IF ( LEURBAN .AND. PCUR(JL) > 0.0_JPRB ) THEN
+! Blend in the urban Van Genuchten parameters (RURBALP/RURBCON/RURBLAM/
+! RURBSAT/RURBSRES), area-weighted by PCUR, matching the existing precedent
+! for RURBSAT in the VIC runoff capacity (ZWMK) below. ZMFAC has no urban
+! counterpart in the namelist so it is left as the natural-soil value,
+! consistent with the rest of this file.
+      ZWSATM=(1.0_JPRB-PCUR(JL))*ZWSATM+PCUR(JL)*RURBSAT
+      ZWRESTM=(1.0_JPRB-PCUR(JL))*ZWRESTM+PCUR(JL)*RURBSRES
+      ZALPHA=(1.0_JPRB-PCUR(JL))*ZALPHA+PCUR(JL)*RURBALP
+      ZLAM=(1.0_JPRB-PCUR(JL))*ZLAM+PCUR(JL)*RURBLAM
+      ZWCONS=(1.0_JPRB-PCUR(JL))*ZWCONS+PCUR(JL)*RURBCON
+      ZWFAC_S=SIGN(MAX(ABS(ZWSATM-ZWRESTM),ZEPSILON),(ZWSATM-ZWRESTM))
+      ZWMAX=.999_JPRB*ZWSATM
+      ZSEMAX=(ZWMAX-ZWRESTM)/ZWFAC_S
+      ZDMAX_D=(ZSEMAX**(ZLAM-(1._JPRB/ZMFAC))) &
+ &         *(((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(ZMFAC)) &
+ &         + ((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
+      ZWMIN=1.001_JPRB*ZWRESTM
+      ZSEMIN=(ZWMIN-ZWRESTM)/ZWFAC_S
+      ZDMIN_D=(ZSEMIN**(ZLAM-(1._JPRB/ZMFAC))) &
+ &         *(((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(ZMFAC)) &
+ &         + ((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
+      ZDMAX=(((1._JPRB-ZMFAC)*ZWCONS)/ &
+ &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMAX_D,JPRB)
+      ZDMIN=(((1._JPRB-ZMFAC)*ZWCONS)/ &
+ &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMIN_D,JPRB)
+    ELSE
+      ZDMAX=RDMAXM3D(JL,1_JPIM)
+      ZDMIN=RDMINM3D(JL,1_JPIM)
+    ENDIF
 !    ZWFAC_S=SIGN(MAX(ABS(ZWSATM-ZWRESTM),ZEPSILON),(ZWSATM-ZWRESTM))
 !    ZWMAX=.999_JPRB*ZWSATM
 !    ZSEMAX =(ZWMAX-ZWRESTM)/ZWFAC_S
@@ -602,25 +630,35 @@ DO JK=2,KLEVS_WB
 !      ENDIF
       ZMFAC = RMFACM3D(JL,JK)
       ZWCONS=RWCONSM3D(JL,JK)
-!      ZWFAC_S=SIGN(MAX(ABS(ZWSATM-ZWRESTM),ZEPSILON),(ZWSATM-ZWRESTM))
-!      ZWMAX=.999_JPRB*ZWSATM  
-!      ZSEMAX =(ZWMAX-ZWRESTM)/ZWFAC_S  
-!      ZDMAX_D=(ZSEMAX**(ZLAM-(1._JPRB/ZMFAC))) &
-! &         *(((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(ZMFAC)) &
-! &         + ((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
-!      ZWMIN=1.001_JPRB*ZWRESTM   
-!      ZSEMIN=(ZWMIN-ZWRESTM)/ZWFAC_S 
-!      ZDMIN_D= (ZSEMIN**(ZLAM-(1._JPRB/ZMFAC))) &
-! &         *(((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(ZMFAC)) &
-! &         + ((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
- 
-!      ZDMAX= (((1._JPRB-ZMFAC)*ZWCONS)/ &
-! &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMAX_D,JPRB)
-
-!      ZDMIN= (((1._JPRB-ZMFAC)*ZWCONS)/ &
-! &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMIN_D,JPRB)
-      ZDMAX=RDMAXM3D(JL,JK)
-      ZDMIN=RDMINM3D(JL,JK) 
+      IF ( LEURBAN .AND. PCUR(JL) > 0.0_JPRB ) THEN
+! Same urban Van Genuchten blend as the top-layer (JK=1) section above --
+! replaces the old ad-hoc "Test value for Urban" hack further below, which
+! only touched the ZW<=ZWRESTM branch's ZD with a hardcoded 1.e-4 constant
+! instead of the calibrated RURBCON/RURBALP/RURBLAM/RURBSRES parameters.
+        ZWSATM=(1.0_JPRB-PCUR(JL))*ZWSATM+PCUR(JL)*RURBSAT
+        ZWRESTM=(1.0_JPRB-PCUR(JL))*ZWRESTM+PCUR(JL)*RURBSRES
+        ZALPHA=(1.0_JPRB-PCUR(JL))*ZALPHA+PCUR(JL)*RURBALP
+        ZLAM=(1.0_JPRB-PCUR(JL))*ZLAM+PCUR(JL)*RURBLAM
+        ZWCONS=(1.0_JPRB-PCUR(JL))*ZWCONS+PCUR(JL)*RURBCON
+        ZWFAC_S=SIGN(MAX(ABS(ZWSATM-ZWRESTM),ZEPSILON),(ZWSATM-ZWRESTM))
+        ZWMAX=.999_JPRB*ZWSATM
+        ZSEMAX=(ZWMAX-ZWRESTM)/ZWFAC_S
+        ZDMAX_D=(ZSEMAX**(ZLAM-(1._JPRB/ZMFAC))) &
+ &         *(((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(ZMFAC)) &
+ &         + ((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
+        ZWMIN=1.001_JPRB*ZWRESTM
+        ZSEMIN=(ZWMIN-ZWRESTM)/ZWFAC_S
+        ZDMIN_D=(ZSEMIN**(ZLAM-(1._JPRB/ZMFAC))) &
+ &         *(((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(ZMFAC)) &
+ &         + ((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
+        ZDMAX=(((1._JPRB-ZMFAC)*ZWCONS)/ &
+ &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMAX_D,JPRB)
+        ZDMIN=(((1._JPRB-ZMFAC)*ZWCONS)/ &
+ &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMIN_D,JPRB)
+      ELSE
+        ZDMAX=RDMAXM3D(JL,JK)
+        ZDMIN=RDMINM3D(JL,JK)
+      ENDIF
       ZWFLOOR=MERGE(MAX(RWPWPM3D(JL,JK),ZWRESTM),ZWRESTM,YDSOIL%LEWPFLOOR)
       IF (JK < KLEVS_WB) THEN
         ZW=MAX(MAX(PWSAM1M(JL,JK),PWSAM1M(JL,JK+1)),ZWFLOOR)
@@ -633,9 +671,6 @@ DO JK=2,KLEVS_WB
       ZRMFAC=1./ZMFAC
       IF (ZW.LE.(1.001*ZWRESTM)) THEN
       ZD=ZDMIN
-      IF ( LEURBAN ) THEN
-       ZD=ZDMIN    * (1.0_JPRB-PCUR(JL))  + (PCUR(JL)*1.e-4_JPRD) !Test value for Urban
-      ENDIF
         ZK=0.0_JPRB
       ELSEIF ((ZW.GT.(1.001_JPRB*ZWRESTM)).AND.(ZW.LE.(0.999_JPRB*ZWSATM))) THEN
         ZKD=ZWCONS*ZSE**ZLAM* &
