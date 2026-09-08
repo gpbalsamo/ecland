@@ -399,19 +399,28 @@ ENDIF
   ZWSATM(1:NSOTY)=(/0.403_JPRB,0.439_JPRB,0.430_JPRB,0.520_JPRB,0.614_JPRB,0.766_JPRB,0.439_JPRB/)
   ZWRES(1:NSOTY)=(/0.025_JPRB,0.010_JPRB,0.010_JPRB,0.010_JPRB,0.010_JPRB,0.010_JPRB,0.010_JPRB/)
 
-! Set 0 SOILTYPE (WATER) VALUES TO 0
-  ZMVGALPHA(0)=0.0_JPRB
-  ZWCONSM(0)=0.0_JPRB
-  ZNFAC(0)=0.0_JPRB
-  ZLAMBDA(0)=0.0_JPRB
-  ZWSATM(0)=0.0_JPRB
-  ZWRES(0)=0.0_JPRB
-  YDSOIL%RMVGALPHA(0)=0.0_JPRB
-  YDSOIL%RWCONSM(0)=0.0_JPRB
-  YDSOIL%RNFACM(0)=0.0_JPRB
-  YDSOIL%RLAMBDAM(0)=0.0_JPRB
-  YDSOIL%RWSATM(0)=0.0_JPRB
-  YDSOIL%RWRESTM(0)=0.0_JPRB
+! SOILTYPE 0 (WATER) TAKES THE MEDIUM (LOAM) VALUES, NOT ZEROS.
+! Zeroing these used to be harmless because nothing read a soil column at a
+! water point. It is not harmless once one does: index 0 is what
+! SUSDP_DFLT_CTL looks up for such a point, so the zeros propagate into
+! RWSATM3D/RMVGALPHA3D/RNFACM3D/RWRESTM3D, and every consumer that divides by
+! them inherits a 0/0 -- SURFRAD_CTL's 1/(RWCAPM3D-RWPWPM3D) and
+! SRFSN_LWIMPMLS's 1/RWSATM3D among them. Medium is the same fallback
+! SUSSOIL already makes for the Clapp-Hornberger scalars below
+! (RWSAT=ZTHESAT(2)), so a water point now carries a defined, if notional,
+! field capacity and permanent wilting point instead of an undefined one.
+  ZMVGALPHA(0)=ZMVGALPHA(2)
+  ZWCONSM(0)=ZWCONSM(2)
+  ZNFAC(0)=ZNFAC(2)
+  ZLAMBDA(0)=ZLAMBDA(2)
+  ZWSATM(0)=ZWSATM(2)
+  ZWRES(0)=ZWRES(2)
+  YDSOIL%RMVGALPHA(0)=ZMVGALPHA(2)
+  YDSOIL%RWCONSM(0)=ZWCONSM(2)
+  YDSOIL%RNFACM(0)=ZNFAC(2)
+  YDSOIL%RLAMBDAM(0)=ZLAMBDA(2)
+  YDSOIL%RWSATM(0)=ZWSATM(2)
+  YDSOIL%RWRESTM(0)=ZWRES(2)
 
   DO JS=1,NSOTY
     YDSOIL%RMVGALPHA(JS)=ZMVGALPHA(JS)
