@@ -334,6 +334,10 @@ CONTAINS
 !   aquifer -- see yos_soil.F90. 1.0 is the pre-existing behaviour, bit for
 !   bit, so an experiment that never mentions it is unchanged.
     REAL(KIND=JPRB) :: RWTDRECHARGE = 1.0_JPRB
+!   Frozen-soil macropore-permeability cap -- see yos_soil.F90. Defaults to
+!   .FALSE. (plain baseline ecLand) so an experiment that never mentions it
+!   is unaffected.
+    LOGICAL :: LEFROZENSOILFIX = .FALSE.
 
     REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
@@ -394,6 +398,7 @@ CONTAINS
     TMP_SURF%LEBEDROCKLIM  = LEBEDROCKLIM
     TMP_SURF%LEGWRECHARGE  = LEGWRECHARGE
     TMP_SURF%RWTDRECHARGE  = RWTDRECHARGE
+    TMP_SURF%LEFROZENSOILFIX = LEFROZENSOILFIX
 
     !     ------------------------------------------------------------------
     !*         3.     PRINT FINAL VALUES
@@ -436,6 +441,7 @@ CONTAINS
     WRITE(NULOUT,*) '   LEBEDROCKLIM   = ', LEBEDROCKLIM
     WRITE(NULOUT,*) '   LEGWRECHARGE   = ', LEGWRECHARGE
     WRITE(NULOUT,*) '   RWTDRECHARGE   = ', RWTDRECHARGE
+    WRITE(NULOUT,*) '   LEFROZENSOILFIX = ', LEFROZENSOILFIX
 
 
     IF (LHOOK) CALL DR_HOOK('RDNML_SOIL',1,ZHOOK_HANDLE)

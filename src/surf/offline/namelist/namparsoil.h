@@ -23,5 +23,8 @@ NAMELIST/NAMPARSOIL/&
 & , LEWVFLUX, LEWPFLOOR, LEFRZFLOOR, LEUNIFORMROOT, LEBEDROCKLIM, LEGWRECHARGE&
 ! * LEGWRECHARGE recharge throttle -- see yos_soil.F90. Defaults to 1.0 in
 !   RDNML_SOIL, i.e. unset means the pre-existing behaviour bit for bit.
-& , RWTDRECHARGE
+& , RWTDRECHARGE&
+! * frozen-soil macropore-permeability cap -- see yos_soil.F90. Defaults to
+!   .FALSE. below (RDNML_SOIL), i.e. unset means plain baseline ecLand.
+& , LEFROZENSOILFIX
 !     ------------------------------------------------------------------
