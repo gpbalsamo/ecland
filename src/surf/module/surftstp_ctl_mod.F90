@@ -567,7 +567,7 @@ REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
 REAL(KIND=JPRD) :: ZTLICE(KLON),ZTLMNW(KLON),ZTLWML(KLON),&           
                    &ZTLBOT(KLON),ZTLSF(KLON),ZHLICE(KLON),ZHLML(KLON)
-REAL(KIND=JPRB) :: ZTSFCIN(KLON),ZTSFLIN(KLON),ZROFS(KLON)
+REAL(KIND=JPRB) :: ZTSFCIN(KLON),ZTSFLIN(KLON),ZROFS(KLON),ZURBROF(KLON)
 
 INTEGER(KIND=JPIM) :: KLEVS_WB, ILEVM1_WB
 !     ------------------------------------------------------------------
@@ -744,8 +744,15 @@ ENDDO
   ! CHANGE THROUGHFALL AT THE SURFACE (SRFWEXC_VG ACCOUNTS FOR ROF FROM SUB-URB LAYER)
   !   ROUGH ESTIMATE RUNOFF OF 0.3 - Drainage estimate will need to be revised or updated based on mapping
   ! Likely to be an underestimate - Paul & Meyer 2001 suggest 55% runoff on fully urban surfaces 
+! The throughfall removed here is water that has left the column: it never
+! reaches the soil, so it appears in neither the storage terms nor the runoff
+! terms of the water budget, and shows up as a residual in BUDGET_MASS_DDH.
+! Carry it to deep run-off (added to PROFD in 5.2, once PROFD is in rate
+! units) so the intercepted fraction leaves as drainage rather than vanishing.
+ZURBROF(KIDIA:KFDIA)=0.0_JPRB
 IF (LEURBAN) THEN
  DO JL=KIDIA,KFDIA
+  ZURBROF(JL)=0.3_JPRB*PFRTI(JL,10)*(ZTSFC(JL)+ZTSFL(JL))
   ZTSFC(JL)=ZTSFC(JL)*(1.0_JPRB-(0.3_JPRB*PFRTI(JL,10)))
   ZTSFL(JL)=ZTSFL(JL)*(1.0_JPRB-(0.3_JPRB*PFRTI(JL,10)))
  ENDDO
@@ -1130,6 +1137,10 @@ DO JL=KIDIA,KFDIA
   PFWEV(JL) =ZFWEL1(JL)+ZFWE234(JL)
   PROFS(JL) =PROFS(JL)*ZTSPHY
   PROFD(JL) =PROFD(JL)*ZTSPHY
+! Urban throughfall interception (2b): already a rate, so added after the
+! conversion above. Guarded on LEURBAN so that every configuration without
+! urban is provably untouched by this.
+  IF (LEURBAN) PROFD(JL)=PROFD(JL)+ZURBROF(JL)
   PTSDFL(JL)=-PTSDFL(JL)
   PMELT(JL) =ZMSN(JL)
 ENDDO
