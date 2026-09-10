@@ -653,19 +653,22 @@ USE CMF_UTILS_MOD,           ONLY: vecD2mapD
 #ifdef UseMPI_CMF
 USE CMF_CTRL_MPI_MOD,        ONLY: CMF_MPI_AllReduce_D2MAP
 #endif
-USE YOS_CMF_DIAG,            ONLY: D2FLDFRC
+USE YOS_CMF_DIAG,            ONLY: D2FLDFRC, D2FLDDPH
 USE YOS_CMF_INPUT,           ONLY: NX,NY
 IMPLICIT NONE 
 ! Declaration of arguments 
-REAL(KIND=JPRB)                  :: D2MAPTMP(NX,NY)
+REAL(KIND=JPRB)                  :: D2MAPTMP(NX,NY,2)
 REAL(KIND=JPRB), INTENT(OUT)     :: PBUFF(:,:,:)
 !============================
-CALL vecD2mapD(D2FLDFRC,D2MAPTMP)             !! MPI node data is gathered by vecP2mapR
+CALL vecD2mapD(D2FLDFRC,D2MAPTMP(:,:,1))             !! MPI node data is gathered by vecP2mapR
+CALL vecD2mapD(D2FLDDPH,D2MAPTMP(:,:,2))             !! MPI node data is gathered by vecP2mapR
 #ifdef UseMPI_CMF
-  CALL CMF_MPI_AllReduce_D2MAP(D2MAPTMP)
+  CALL CMF_MPI_AllReduce_D2MAP(D2MAPTMP(:,:,1))
+  CALL CMF_MPI_AllReduce_D2MAP(D2MAPTMP(:,:,2))
 #endif
 
-CALL INTERPI(D2MAPTMP,PBUFF(:,:,1))        !!  Inverse interpolation (CaMa grid -> input runoff grid)
+CALL INTERPI(D2MAPTMP(:,:,1),PBUFF(:,:,1))        !!  Inverse interpolation (CaMa grid -> input runoff grid)
+CALL INTERPI(D2MAPTMP(:,:,2),PBUFF(:,:,2))        !!  Inverse interpolation (CaMa grid -> input runoff grid)
 
 CONTAINS
 !==========================================================

@@ -356,11 +356,12 @@ IF( MYPROC == 1 ) THEN
 ! * -- Surface water balance 
 !******************************************************************
   IF( NPOS == NPOSWAT )THEN
-    NVARS3D=11
+    NVARS3D=15
     CVARS3D(1:NVARS3D)=(/'Snowf       ','Rainf       ','Evap        ',&
                          'Qs          ','Qsb         ','Qsm         ',&
                          'DelSoilMoist','DelSWE      ','DelIntercept',&
-                         'Intercept   ','fldfrc      '/)
+                         'Intercept   ','fldfrc      ','irrflx      ',&
+                         'Qrec        ','Qcap        ','DelAquifer  '/)
     DO IVAR=1,NVARS3D
       CALL INIT_NCDF_VAR(YD_VARINFO,TRIM(CVARS3D(IVAR)),CCOORD_IN="time lat lon")
       CALL NC_DEF_VAR(NPOS,YD_VARINFO,IDIMID3(1:IDIM3),VARID)

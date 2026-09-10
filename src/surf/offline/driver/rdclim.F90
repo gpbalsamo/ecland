@@ -79,10 +79,10 @@ USE YOMGPD1S , ONLY : GPD &
                      &,VFALUVP,VFALUVD,VFALNIP,VFALNID &
                      &,VFALUVI,VFALUVV,VFALUVG &
                      &,VFALNII,VFALNIV,VFALNIG &
-                     &,VFCVL, VFCUR &
+                     &,VFCVL, VFCUR, VFIRFR &
                      &,VFCVH,VFTVL,VFTVH,VFSST,VFCI,VFCIL,VFSOTY &
                      &,VFSDOR, VFCO2TYP,VFISOP_EP &
-                     &,VFLDEPTH,VFCLAKE, VFCLAKEF &
+                     &,VFLDEPTH,VFLDEPTHF,VFCLAKE, VFCLAKEF &
                      &,VFZO,VFHO,VFHO_INV,VFDO,VFOCDEPTH,VFADVT &
                      &,VFADVS, VFTRI0, VFTRI1, VFSWDK_SAVE &
                      &,VFLAIL,VFBVOCLAIL,VFLAIH,VFBVOCLAIH,VFFWET,VFRSML,VFRSMH,VFR0VT&
@@ -92,7 +92,7 @@ USE YOMGC1S  , ONLY : LMASK
 USE YOMDPHY  , ONLY : NLON, NLAT, NPOI, NVSF, NGCC, NLALO  ,NVHILO, NCLIMDAT,NCOM, NPOIP,NPOIPALL, NPOIALL, NPOIOFF
 USE YOMLUN1S , ONLY : NULOUT, RMISS
 USE YOMLOG1S , ONLY : NDIMCDF
-USE YOEPHY   , ONLY : LELAIV, LEURBAN, LEC4MAP, LBVOC_EMIS
+USE YOEPHY   , ONLY : LELAIV, LEURBAN, LEIRRIGATION, LEC4MAP, LBVOC_EMIS
 USE NETCDF
 USE NETCDF_UTILS, ONLY: NCERROR
 USE BUFFER_UTILS, ONLY: PACK_BUFFER, UNPACK_BUFFER
@@ -465,19 +465,26 @@ VFRSML(:,:)=0._JPRB
 VFRSMH(:,:)=0._JPRB
 
 !! 2D FIELDS
-IF (LEURBAN) THEN
+! LEURBAN and LEIRRIGATION are independent, so neither may gate the other's
+! field. Combining them into one condition silently dropped 'cu' -- and zeroed
+! the urban cover that had been read -- for every run with urban on and
+! irrigation off, which is the default configuration.
 NVARS2D=20
-CVARS2D(1:NVARS2D)=(/ 'landsea    ','geopot     ','cvl        ', &
-                      'cvh        ','tvl        ','tvh        ','cu         ','sotype     ','sdor       ',&
-                      'sst        ','seaice     ','glacierMask','LDEPTH     ','CLAKE      ','z0m        ','lz0h       ',&
-                      'x          ','CLAKEF     ','Ctype      ','ISOP_EP    '/)
-ELSE
-NVARS2D=19
 CVARS2D(1:NVARS2D)=(/ 'landsea    ','geopot     ','cvl        ', &
                       'cvh        ','tvl        ','tvh        ','sotype     ','sdor       ',&
                       'sst        ','seaice     ','glacierMask','LDEPTH     ','CLAKE      ','z0m        ','lz0h       ',&
-                      'x          ','CLAKEF     ','Ctype      ','ISOP_EP    '/)
-VFCUR(:,:)=0._JPRB !Creates an array of zeros if urban is not used
+                      'x          ','CLAKEF     ','LDEPTHF    ','Ctype      ','ISOP_EP    '/)
+IF (LEURBAN) THEN
+  NVARS2D=NVARS2D+1
+  CVARS2D(NVARS2D)='cu         '
+ELSE
+  VFCUR(:,:)=0._JPRB !Creates an array of zeros if urban is not used
+ENDIF
+IF (LEIRRIGATION) THEN
+  NVARS2D=NVARS2D+1
+  CVARS2D(NVARS2D)='irrfrc     '
+ELSE
+  VFIRFR(:,:)=0._JPRB !Creates an array of zeros if irrigation is not used
 ENDIF
 
 DO IVAR=1,NVARS2D
@@ -521,6 +528,10 @@ DO IVAR=1,NVARS2D
       IF ( STATUS /= 0 ) CALL ABORT
       RECV_BUF=PACK(ZBUF,LMASK(ISTP:IENP))
       CALL UNPACK_BUFFER(VFCUR, RECV_BUF)
+    CASE('irrfrc')
+      IF ( STATUS /= 0 ) CALL ABORT
+      RECV_BUF=PACK(ZBUF,LMASK(ISTP:IENP))
+      CALL UNPACK_BUFFER(VFIRFR, RECV_BUF)
     CASE('sotype')
       IF ( STATUS /= 0 ) CALL ABORT
       RECV_BUF=PACK(ZBUF,LMASK(ISTP:IENP))
@@ -573,6 +584,14 @@ DO IVAR=1,NVARS2D
          RECV_BUF=PACK(ZBUF,LMASK(ISTP:IENP))
          CALL UNPACK_BUFFER(VFCLAKEF, RECV_BUF)
        ENDIF
+    CASE('LDEPTHF')
+       IF ( STATUS /= 0 ) THEN
+         WRITE(NULOUT,*) 'LDEPTHF not found, set == to LDEPTH'
+         VFLDEPTHF(:,:)=VFLDEPTH(:,:)
+       ELSE
+         RECV_BUF=PACK(ZBUF,LMASK(ISTP:IENP))
+         CALL UNPACK_BUFFER(VFLDEPTHF, RECV_BUF)
+       ENDIF
     CASE('Ctype')
       IF (LEC4MAP) THEN
          IF ( STATUS /= 0 ) THEN
@@ -591,7 +610,7 @@ DO IVAR=1,NVARS2D
   END SELECT
   IF( MYPROC == 1 ) THEN
     IF (STATUS /= 0) THEN
-      CALL MINMAX(CVAR,ZREALD,NMX,NMY,LMASK,NULOUT)
+      CALL MINMAX(CVAR,ZREALD,NMX,NMY,LMASK(ISTP:IENP),NULOUT)
     ENDIF
   ENDIF
   CALL MPL_BARRIER()

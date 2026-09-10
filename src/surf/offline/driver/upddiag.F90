@@ -126,6 +126,7 @@ SUBROUTINE UPDDIAG( &
 USE PARKIND1  ,ONLY : JPIM     ,JPRB
 USE YOETHF   , ONLY : RHOH2O
 USE YOESOIL1S, ONLY : RDAW
+USE YOS_SURF , ONLY : YSURF
 USE YOMGPD1S , ONLY : VDIEWSS  ,VDINSSS  ,VDISSHF
 USE YOMGDI1S , ONLY : D1STISRD ,D1STISRU ,D1STITRD ,D1STITRU ,&
             &D1STIH   ,D1STILE  ,D1STIGFL ,D1STII   ,D1STIEVAP,&
@@ -160,6 +161,7 @@ USE YOMGDI1S , ONLY : D1STISRD ,D1STISRU ,D1STITRD ,D1STITRU ,&
             &D1SSDS   ,D1SWLDS  ,&
             &D1SLSRF  ,D1SCRF   ,D1SLSSF  ,D1SCSF   ,&
             &D1STE    ,D1STRO   ,D1STSRO  ,D1SMLT  ,&
+            &D1STIRRFLX,D1SGWREC,D1SGWCAP,D1SDELAQ,&
             &D1SSDSSL,&
             &D1SVTRC  ,D1SVTRA ,&
             &D1T2M    ,D1D2M,&
@@ -408,7 +410,21 @@ D1SVEGEV(KIDIA:KFDIA,IBL) = 0._JPRB ! not used
 D1SDSH(KIDIA:KFDIA,IBL) = 0._JPRB ! DelSoilHeat of skin layer (0)
 D1STNDH(KIDIA:KFDIA,IBL) = PDDHS%PDHTSS(KIDIA:KFDIA,1,15)     ! DelColdCont
 
-D1SSDS(KIDIA:KFDIA,IBL)=PTSPHY*PSURF%PSNSE1(KIDIA:KFDIA,1)
+! Sum over all KLEVSN snow layers, not just layer 1 -- PSNSE1 is documented
+! as MULTI-LAYER snow mass per unit surface (already kg/m2/s, no depth
+! weighting needed, unlike D1SWDS's soil DOT_PRODUCT with RDAW above).
+! Reading only layer 1 made DelSWE track that one layer's tendency
+! instead of the total snowpack's: correct while snow sits in a single
+! layer, but the multi-layer scheme periodically redistributes mass
+! between layers as the pack accumulates/consolidates/melts, and layer
+! 1's tendency alone can then swing tens of mm away from the true total
+! change -- even opposite in sign -- while the total itself moves
+! smoothly. Measured at US-GLE/CA-Qfo: reported DelSWE vs the actual
+! SWE(t)-SWE(t-1) diverging by 25-37mm at scattered single timesteps,
+! concentrated in the accumulation/melt season when redistribution is
+! most active, with SWEML confirming the true multi-layer state moves
+! smoothly through exactly these steps.
+D1SSDS(KIDIA:KFDIA,IBL)=PTSPHY*SUM(PSURF%PSNSE1(KIDIA:KFDIA,1:KLEVSN),DIM=2)
 D1SWLDS(KIDIA:KFDIA,IBL)=PTSPHY*PSURF%PWLE1(KIDIA:KFDIA)
 !write(6,*) 'delint',D1SWLDS
 
@@ -421,6 +437,16 @@ D1STE(KIDIA:KFDIA,IBL)   =  PFLUX%PDIFTQ(KIDIA:KFDIA,KLEV)
 D1STSRO(KIDIA:KFDIA,IBL) =  PFLUX%PFWRO1(KIDIA:KFDIA)
 D1STRO(KIDIA:KFDIA,IBL)  =  PFLUX%PFWRO1(KIDIA:KFDIA) + PFLUX%PFWROD(KIDIA:KFDIA)
 D1SMLT(KIDIA:KFDIA,IBL)  =  PFLUX%PFWMLT(KIDIA:KFDIA)
+D1STIRRFLX(KIDIA:KFDIA,IBL) = PFLUX%PIRFL(KIDIA:KFDIA)
+! Aquifer exchange (LEGWRECHARGE; all zero when it is off). PGWREC and PGWCAP are
+! the two opposing fluxes; D1SDELAQ is the resulting storage change, taken from the
+! CLAMPED water-table tendency so it reflects what the aquifer actually gained --
+! (PGWREC-PGWCAP)*dt minus D1SDELAQ is therefore the water lost to the RGWTD_MIN /
+! RDBEDROCK clamps, which is otherwise invisible.
+D1SGWREC(KIDIA:KFDIA,IBL) = PFLUX%PGWREC(KIDIA:KFDIA)
+D1SGWCAP(KIDIA:KFDIA,IBL) = PFLUX%PGWCAP(KIDIA:KFDIA)
+D1SDELAQ(KIDIA:KFDIA,IBL) = -PTSPHY*RHOH2O*YSURF%YSOIL%RGWSPECYIELD &
+                          & *PSURF%PWTDE1(KIDIA:KFDIA)
 
 ! Screen level
 D1T2M(KIDIA:KFDIA,IBL) = PSURF%GSD%PT2M(KIDIA:KFDIA)

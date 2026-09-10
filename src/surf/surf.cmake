@@ -46,6 +46,7 @@ list( APPEND module_src
     srfbvoc_mod.F90
     srfcotwo_mod.F90
     srfene_mod.F90
+    srfgwrecharge_mod.F90
     srfi_mod.F90
     srfil_mod.F90
     srfils_mod.F90
@@ -97,6 +98,8 @@ list( APPEND module_src
     srfwlsad_mod.F90
     srfwlstl_mod.F90
     srfwng_mod.F90
+    srfwvapor_coef_mod.F90
+    srfwvapor_mod.F90
     susdp_deriv_ctl_mod.F90
     sussurf_params.F90
     sucotwo_mod.F90

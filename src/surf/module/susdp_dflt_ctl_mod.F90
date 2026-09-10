@@ -63,7 +63,12 @@ TYPE(TVEG),         INTENT(IN)  :: YDVEG
 TYPE(TSOIL),        INTENT(IN)  :: YDSOIL
 TYPE(TAGS),         INTENT(IN)  :: YDAGS
 
-INTEGER(KIND=JPIM) :: JK
+INTEGER(KIND=JPIM) :: JK, JL
+REAL(KIND=JPRB) :: ZDEPTH_UPPER, ZDEPTH_LOWER
+REAL(KIND=JPRB) :: ZTOTWH, ZTOTWL, ZCUMWH, ZCUMWL, ZWH, ZWL
+REAL(KIND=JPRB), PARAMETER :: RZROOTDEPTH_MIN=0.1_JPRB ! floor for the vegetation/capacity-matched RDMAXROOT, see below
+INTEGER(KIND=JPIM) :: IVTH(KFDIA-KIDIA+1), IVTL(KFDIA-KIDIA+1)
+LOGICAL :: LLODDVTYPE(KFDIA-KIDIA+1)
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
 IF (LHOOK) CALL DR_HOOK('SUSDP_DFLT_CTL_MOD:SUSDP_DFLT_CTL',0,ZHOOK_HANDLE)
@@ -75,6 +80,7 @@ ASSOCIATE(RVCOVH2D=>PSSDP2(:,SSDP2D_ID%NRVCOVH2D), RVCOVL2D=>PSSDP2(:,SSDP2D_ID%
     & RVZ0MH2D=>PSSDP2(:,SSDP2D_ID%NRVZ0MH2D), RVZ0ML2D=>PSSDP2(:,SSDP2D_ID%NRVZ0ML2D),&
     & RVZ0HH2D=>PSSDP2(:,SSDP2D_ID%NRVZ0HH2D), RVZ0HL2D=>PSSDP2(:,SSDP2D_ID%NRVZ0HL2D),&
     & RVRSMINB2D=>PSSDP2(:,SSDP2D_ID%NRVRSMINB2D),&
+    & RDMAXROOTH2D=>PSSDP2(:,SSDP2D_ID%NRDMAXROOTH2D), RDMAXROOTL2D=>PSSDP2(:,SSDP2D_ID%NRDMAXROOTL2D),&
     & RVROOTSAH3D=>PSSDP3(:,:,SSDP3D_ID%NRVROOTSAH3D), RVROOTSAL3D=>PSSDP3(:,:,SSDP3D_ID%NRVROOTSAL3D),&
     & RCGDRYM3D=>PSSDP3(:,:,SSDP3D_ID%NRCGDRYM3D), RLAMBDAM3D=>PSSDP3(:,:,SSDP3D_ID%NRLAMBDAM3D),&
     & RMVGALPHA3D=>PSSDP3(:,:,SSDP3D_ID%NRMVGALPHA3D), RNFACM3D=>PSSDP3(:,:,SSDP3D_ID%NRNFACM3D),&
@@ -123,14 +129,24 @@ RVZ0HH2D(:)    = YDVEG%RVZ0H(NINT(PTVH(KIDIA:KFDIA)))
 RVZ0HL2D(:)    = YDVEG%RVZ0H(NINT(PTVL(KIDIA:KFDIA)))
 RVRSMINB2D(:)  = 50.0_JPRB
 
-DO JK=1, KLEVS3D
-  RVROOTSAH3D(:,JK) = YDVEG%RVROOTSA(JK, NINT(PTVH(KIDIA:KFDIA)))
-  RVROOTSAL3D(:,JK) = YDVEG%RVROOTSA(JK, NINT(PTVL(KIDIA:KFDIA)))
+IVTH(:) = NINT(PTVH(KIDIA:KFDIA))
+IVTL(:) = NINT(PTVL(KIDIA:KFDIA))
+! Zero-root-depth types (desert=8, ice=12, water=14, ocean=15, water/land
+! mix=20): SRFROOTFR pins these entirely to layer 1 and skips them for the
+! same reason the Zeng exponential does -- there's no meaningful rooting
+! depth to assign. Leave them on the YDVEG%RVROOTSA(1,.)=1 default even
+! when LEUNIFORMROOT is active, rather than giving bare ground/water/ice
+! points an artificial uniform root profile.
+LLODDVTYPE(:) = .FALSE.
+DO JL=1,SIZE(IVTH)
+  LLODDVTYPE(JL) = ANY(IVTH(JL) == (/8,12,14,15,20/)) .OR. ANY(IVTL(JL) == (/8,12,14,15,20/))
 ENDDO
 
-! Soil Parameters
+! Soil Parameters (moved ahead of root fraction: the LEUNIFORMROOT default
+! below needs RWSATM3D/RWRESTM3D already populated to weight depth by local
+! plant-available capacity)
 
-RCGDRYM3D(:,:)  = 1.6E6_JPRB 
+RCGDRYM3D(:,:)  = 1.6E6_JPRB
 DO JK=1, KLEVS3D
   RLAMBDAM3D(:,JK) = YDSOIL%RLAMBDAM(NINT(PSLT(KIDIA:KFDIA)))
   RMVGALPHA3D(:,JK)= YDSOIL%RMVGALPHA(NINT(PSLT(KIDIA:KFDIA)))
@@ -138,6 +154,85 @@ DO JK=1, KLEVS3D
   RWCONSM3D(:,JK)  = YDSOIL%RWCONSM(NINT(PSLT(KIDIA:KFDIA)))
   RWRESTM3D(:,JK)  = YDSOIL%RWRESTM(NINT(PSLT(KIDIA:KFDIA)))
   RWSATM3D(:,JK)   = YDSOIL%RWSATM(NINT(PSLT(KIDIA:KFDIA)))
+ENDDO
+
+! Prototype: RDMAXROOTH2D/RDMAXROOTL2D (per-point, per-canopy-layer maximum
+! rooting depth for LEUNIFORMROOT) default to a vegetation- AND soil-texture-
+! dependent value derived entirely from quantities ecLand already has, used
+! whenever YDSOIL%RDMAXROOT is not pinned to a fixed positive override (see
+! below). Method: take the *existing* Zeng et al. (1998) root-fraction
+! profile for this point's vegetation type (YDVEG%RVROOTSA, still computed
+! unconditionally by SRFROOTFR in SUSVEG) and weight it by local
+! plant-available capacity proxy (RWSATM3D-RWRESTM3D per layer -- the true
+! field-capacity-to-wilting-point range isn't available yet at this point in
+! the call sequence, since it's derived from these same fields later in
+! SUSDP_DERIV; saturation-minus-residual is a coarser but monotonic, always-
+! available stand-in). RDMAXROOT is then set to the depth containing 95% of
+! that capacity-weighted root profile -- i.e. "how deep would a uniform
+! profile need to reach to draw on approximately the same plant-available
+! water pool the current Zeng profile already does for this vegetation type
+! and this point's own soil". This is a direct CDF-percentile calculation
+! (monotonic, always well-posed), not an attempt to match an absolute
+! capacity value via the uniform formula's own 1/RDMAXROOT normalisation --
+! that turns out non-monotonic (can have zero or two solutions) and isn't
+! used here.
+DO JL=1,SIZE(IVTH)
+  RDMAXROOTH2D(JL) = SUM(YDSOIL%RDAW(1:KLEVS3D))  ! fallback: whole column
+  RDMAXROOTL2D(JL) = RDMAXROOTH2D(JL)
+  ZTOTWH = 0.0_JPRB
+  ZTOTWL = 0.0_JPRB
+  DO JK=1,KLEVS3D
+    ZTOTWH = ZTOTWH + YDVEG%RVROOTSA(JK,IVTH(JL))*MAX(0.0_JPRB,RWSATM3D(JL,JK)-RWRESTM3D(JL,JK))*YDSOIL%RDAW(JK)
+    ZTOTWL = ZTOTWL + YDVEG%RVROOTSA(JK,IVTL(JL))*MAX(0.0_JPRB,RWSATM3D(JL,JK)-RWRESTM3D(JL,JK))*YDSOIL%RDAW(JK)
+  ENDDO
+  ZCUMWH = 0.0_JPRB
+  ZCUMWL = 0.0_JPRB
+  ZDEPTH_UPPER = 0.0_JPRB
+  DO JK=1,KLEVS3D
+    ZWH = YDVEG%RVROOTSA(JK,IVTH(JL))*MAX(0.0_JPRB,RWSATM3D(JL,JK)-RWRESTM3D(JL,JK))*YDSOIL%RDAW(JK)
+    ZWL = YDVEG%RVROOTSA(JK,IVTL(JL))*MAX(0.0_JPRB,RWSATM3D(JL,JK)-RWRESTM3D(JL,JK))*YDSOIL%RDAW(JK)
+    IF (ZTOTWH > 0.0_JPRB .AND. ZCUMWH+ZWH >= 0.95_JPRB*ZTOTWH .AND. ZWH > 0.0_JPRB) THEN
+      RDMAXROOTH2D(JL) = MIN(RDMAXROOTH2D(JL), &
+       & ZDEPTH_UPPER + YDSOIL%RDAW(JK)*(0.95_JPRB*ZTOTWH-ZCUMWH)/ZWH)
+      ZTOTWH = -1.0_JPRB ! mark found, stop overwriting on later JK
+    ENDIF
+    IF (ZTOTWL > 0.0_JPRB .AND. ZCUMWL+ZWL >= 0.95_JPRB*ZTOTWL .AND. ZWL > 0.0_JPRB) THEN
+      RDMAXROOTL2D(JL) = MIN(RDMAXROOTL2D(JL), &
+       & ZDEPTH_UPPER + YDSOIL%RDAW(JK)*(0.95_JPRB*ZTOTWL-ZCUMWL)/ZWL)
+      ZTOTWL = -1.0_JPRB
+    ENDIF
+    ZCUMWH = ZCUMWH + ZWH
+    ZCUMWL = ZCUMWL + ZWL
+    ZDEPTH_UPPER = ZDEPTH_UPPER + YDSOIL%RDAW(JK)
+  ENDDO
+  RDMAXROOTH2D(JL) = MAX(RDMAXROOTH2D(JL), RZROOTDEPTH_MIN)
+  RDMAXROOTL2D(JL) = MAX(RDMAXROOTL2D(JL), RZROOTDEPTH_MIN)
+ENDDO
+! A fixed positive YDSOIL%RDMAXROOT pins every point to that one depth
+! instead (the flat-scalar behaviour used for the AU-DaS sensitivity sweeps
+! earlier this session) -- set YDSOIL%RDMAXROOT<=0 (see SUSSOIL) to use the
+! vegetation/capacity-matched default above.
+IF (YDSOIL%RDMAXROOT > 0.0_JPRB) THEN
+  RDMAXROOTH2D(:) = YDSOIL%RDMAXROOT
+  RDMAXROOTL2D(:) = YDSOIL%RDMAXROOT
+ENDIF
+
+DO JK=1, KLEVS3D
+  RVROOTSAH3D(:,JK) = YDVEG%RVROOTSA(JK, IVTH(:))
+  RVROOTSAL3D(:,JK) = YDVEG%RVROOTSA(JK, IVTL(:))
+  IF (YDSOIL%LEUNIFORMROOT) THEN
+! Stevens et al. (2020, Atmosphere, Eq. 5): uniform root density down to
+! RDMAXROOTH2D/RDMAXROOTL2D, zero below it. ZDEPTH_UPPER/LOWER are scalars
+! (the layer grid itself doesn't vary by point); RDMAXROOTH2D/L2D vary by
+! point (and independently by high/low canopy), so the MIN/MAX below
+! broadcast correctly across the whole KIDIA:KFDIA vector.
+    ZDEPTH_UPPER = SUM(YDSOIL%RDAW(1:JK-1))
+    ZDEPTH_LOWER = ZDEPTH_UPPER + YDSOIL%RDAW(JK)
+    WHERE (.NOT. LLODDVTYPE(:))
+      RVROOTSAH3D(:,JK) = MAX(0.0_JPRB,MIN(RDMAXROOTH2D(:),ZDEPTH_LOWER)-ZDEPTH_UPPER)/RDMAXROOTH2D(:)
+      RVROOTSAL3D(:,JK) = MAX(0.0_JPRB,MIN(RDMAXROOTL2D(:),ZDEPTH_LOWER)-ZDEPTH_UPPER)/RDMAXROOTL2D(:)
+    ENDWHERE
+  ENDIF
 ENDDO
 
 ! Ags Parameters

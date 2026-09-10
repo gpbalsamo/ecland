@@ -10,6 +10,7 @@ SUBROUTINE FLAKEENE                                                      &
   &   PQ_W_FLK        , PQ_ICE_FLK        , PU_STAR_W_FLK         ,      &
   &   PI_ICE_FLK      , PI_BOT_FLK        , PI_W_FLK              ,      &
   &   PI_H_FLK        , PI_INTM_0_H_FLK   , PI_INTM_H_D_FLK       ,      &
+  &   PSA             ,                                                  &
   &   PT_ICE_N_FLK    , PT_WML_N_FLK      , PT_MNW_N_FLK          ,      &
   &   PT_BOT_N_FLK    , PH_ICE_N_FLK      , PH_ML_N_FLK           ,      &
   &   PC_T_N_FLK      , PT_SFC_N                                         )         
@@ -115,6 +116,7 @@ REAL (KIND = JPRD), INTENT(IN):: PI_H_FLK        (:)
 REAL (KIND = JPRD), INTENT(IN):: PI_INTM_0_H_FLK (:)
 REAL (KIND = JPRD), INTENT(IN):: PI_INTM_H_D_FLK (:)
 
+REAL (KIND = JPRB), INTENT(IN):: PSA             (:,:) ! Temperature of the soil layers [K]
 
 REAL (KIND = JPRD), INTENT(INOUT):: PQ_W_FLK (:)
 
@@ -201,6 +203,9 @@ ASSOCIATE(RC_CBL_1=>YDFLAKE%RC_CBL_1, RC_CBL_2=>YDFLAKE%RC_CBL_2, &
  & RC_SBL_ZM_I=>YDFLAKE%RC_SBL_ZM_I, RC_SBL_ZM_N=>YDFLAKE%RC_SBL_ZM_N, &
  & RC_SBL_ZM_S=>YDFLAKE%RC_SBL_ZM_S, RC_SMALL_FLK=>YDFLAKE%RC_SMALL_FLK, &
  & RC_TT_1=>YDFLAKE%RC_TT_1, RC_TT_2=>YDFLAKE%RC_TT_2, &
+ & LFLAKE_BOTSED=>YDFLAKE%LFLAKE_BOTSED, &
+ & RPHI_BOTSED_PR0=>YDFLAKE%RPHI_BOTSED_PR0, &
+ & RDEPTH_BOTSED=>YDFLAKE%RDEPTH_BOTSED, &
  & RC_T_MAX=>YDFLAKE%RC_T_MAX, RC_T_MIN=>YDFLAKE%RC_T_MIN, &
  & RH_ICE_MAX=>YDFLAKE%RH_ICE_MAX, RH_ICE_MIN_FLK=>YDFLAKE%RH_ICE_MIN_FLK, &
  & RH_ML_MAX_FLK=>YDFLAKE%RH_ML_MAX_FLK, RH_ML_MIN_FLK=>YDFLAKE%RH_ML_MIN_FLK, &
@@ -218,7 +223,9 @@ ASSOCIATE(RC_CBL_1=>YDFLAKE%RC_CBL_1, RC_CBL_2=>YDFLAKE%RC_CBL_2, &
  & RH_ICE_FUSION_A=>YDFLAKE%RH_ICE_FUSION_A, RH_ICE_FUSION_B=>YDFLAKE%RH_ICE_FUSION_B, &
  & RT_ICE_MIN_FLK=>YDFLAKE%RT_ICE_MIN_FLK, &
  & RCONV_EQUIL_A=>YDFLAKE%RCONV_EQUIL_A, RCONV_EQUIL_B=>YDFLAKE%RCONV_EQUIL_B, &
- & RCONV_EQUIL_C=>YDFLAKE%RCONV_EQUIL_C, NFLAKEV=>YDFLAKE%NFLAKEV)
+ & RCONV_EQUIL_C=>YDFLAKE%RCONV_EQUIL_C, NFLAKEV=>YDFLAKE%NFLAKEV, & 
+ & RDEPTH_W_MIX_IW=>YDFLAKE%RDEPTH_W_MIX_IW, & 
+ & TMNW_NDG_TIMESCL=>YDFLAKE%TMNW_NDG_TIMESCL, TMNW_NDG_RDSCL=>YDFLAKE%TMNW_NDG_RDSCL)
 
 !==============================================================================
 !  Start calculations
@@ -240,6 +247,13 @@ ENDIF
 !_dm 
 
 MAIN_LOOP: DO JL = KIDIA, KFDIA
+
+ZD_T_MNW_DT   = 0._JPRD
+ZD_T_ICE_DT   = 0._JPRD
+ZD_T_BOT_DT   = 0._JPRD
+ZD_H_ICE_DT   = 0._JPRD
+ZD_H_ML_DT    = 0._JPRD
+ZD_C_T_DT     = 0._JPRD
 
 PT_ICE_N_FLK(JL)  = PT_ICE_P_FLK(JL)
 PT_WML_N_FLK(JL)  = PT_WML_P_FLK(JL)
@@ -263,13 +277,6 @@ PT_WML_N_FLK(JL) = MAX(PT_WML_N_FLK(JL),RTPL_T_F)
 PT_MNW_N_FLK(JL) = MAX(PT_MNW_N_FLK(JL),RTPL_T_F)  
 PT_BOT_N_FLK(JL) = MAX(PT_BOT_N_FLK(JL),RTPL_T_F)  
 PT_ICE_N_FLK(JL) = MIN(PT_ICE_N_FLK(JL),RTPL_T_F) 
-
-ZD_T_MNW_DT   = 0._JPRD 
-ZD_T_ICE_DT   = 0._JPRD 
-ZD_T_BOT_DT   = 0._JPRD 
-ZD_H_ICE_DT   = 0._JPRD 
-ZD_H_ML_DT    = 0._JPRD 
-ZD_C_T_DT     = 0._JPRD 
 
 !------------------------------------------------------------------------------
 !  Compute fluxes, using variables from the previous time step.
@@ -301,9 +308,28 @@ END IF
 ZQ_STAR_FLK = PQ_W_FLK(JL) + PI_W_FLK(JL) + PI_H_FLK(JL) - 2._JPRD*PI_INTM_0_H_FLK(JL)
 
 ! Heat flux through the water-bottom sediment interface
-ZQ_BOT_FLK = 0._JPRD   ! The bottom-sediment scheme is not used
-
-
+IF(LFLAKE_BOTSED) THEN
+  ! Compute bottom heat flux using a simplified representation of temperature
+  ! profile within bottom sediments (no temperature maximum/minimum)
+  ! and the soil temperature at the level 4 as a proxy 
+  ! for the temperature at the bottom of the thermally active layer of bottom sediments
+  ZQ_BOT_FLK = -RTPL_KAPPA_W*(PSA(JL,4)-PT_BOT_P_FLK(JL))*RPHI_BOTSED_PR0/RDEPTH_BOTSED
+!_dbg>
+!_nu IF(JL == 100) THEN
+!_nu   WRITE(NULOUT,*) 'Dinput = ', PDEPTH_W(JL), 'Dused = ',  ZDEPTH_W(JL), '    ZQ_BOT_FLK = ', ZQ_BOT_FLK
+!_nu   WRITE(NULOUT,*) 'Hml_p = ', PH_ML_P_FLK(JL), 'Hml_n = ',  PH_ML_N_FLK(JL)
+!_nu END IF
+!_dbg<
+ELSE 
+  ! Bittom heat flux is zero 
+  ZQ_BOT_FLK = 0._JPRD   ! The bottom-sediment scheme is not used
+!_dbg>
+!_nu IF(JL == 100) THEN
+!_nu   WRITE(NULOUT,*) 'Dinput = ', PDEPTH_W(JL), 'Dused = ',  ZDEPTH_W(JL), '    ZQ_BOT_FLK = ', ZQ_BOT_FLK
+!_nu   WRITE(NULOUT,*) 'Hml_p = ', PH_ML_P_FLK(JL), 'Hml_n = ',  PH_ML_N_FLK(JL)
+!_nu END IF
+!_dbg<
+END IF
 
 !------------------------------------------------------------------------------
 !  Check if ice exists or should be created.
@@ -429,6 +455,40 @@ ZD_T_MNW_DT = (PQ_W_FLK(JL) - ZQ_BOT_FLK + PI_W_FLK(JL) - PI_BOT_FLK(JL))/ &
 PT_MNW_N_FLK(JL) = PT_MNW_P_FLK(JL) + ZD_T_MNW_DT*PDEL_TIME   ! Advance T_mnw
 PT_MNW_N_FLK(JL) = MAX(PT_MNW_N_FLK(JL), RTPL_T_F)             ! Limit T_mnw by the freezing point 
 
+!_dbg>
+!IF(JL == 100) THEN
+!  WRITE(NULOUT,*) 'Before Nudging: TMNW_n = ', PT_MNW_N_FLK(JL), '   Tsoil(1) = ', PSA(JL,1)
+!END IF
+!_dbg<
+
+! Nudge the mean lake temperature to the soil temperature at level 1
+! if the lake or inundated water is shallow 
+! Weighting function; nudging becomes negligible for deep lakes/inundated waters
+ZD_T_MNW_DT = EXP(-TMNW_NDG_RDSCL*(ZDEPTH_W(JL)-RDEPTH_W_MIN))
+! Update mean temperature usinf e-folding time scale of 900 s
+PT_MNW_N_FLK(JL) = PSA(JL,1) + (PT_MNW_N_FLK(JL)-PSA(JL,1))*  &
+  &                EXP(-PDEL_TIME*ZD_T_MNW_DT/TMNW_NDG_TIMESCL)
+! Security, limit T_mnw by the freezing point
+PT_MNW_N_FLK(JL) = MAX(PT_MNW_N_FLK(JL), RTPL_T_F)             
+
+!_dbg>
+!IF(JL == 100) THEN
+!  WRITE(NULOUT,*) 'After Nudging: TMNW_n = ', PT_MNW_N_FLK(JL), '   Tsoil(1) = ', PSA(JL,1)
+!END IF
+!_dbg<
+
+!------------------------------------------------------------------------------
+!  Force mixind down to the bottom for very shallow lakes or inundated waters
+!------------------------------------------------------------------------------
+
+VERY_SHALLOW_LAKE_OR_IW: IF(ZDEPTH_W(JL) < RDEPTH_W_MIX_IW) THEN 
+
+  PH_ML_N_FLK(JL)  = ZDEPTH_W(JL)
+  PT_WML_N_FLK(JL) = PT_MNW_N_FLK(JL)
+  PT_BOT_N_FLK(JL) = PT_MNW_N_FLK(JL)
+  PC_T_N_FLK(JL)   = ZC_T_CON
+
+ELSE VERY_SHALLOW_LAKE_OR_IW
 
 !------------------------------------------------------------------------------
 !  Compute the mixed-layer depth, the mixed-layer temperature, 
@@ -759,6 +819,13 @@ IF(ZFLK_STR_2.LT.0._JPRD) THEN
   PT_BOT_N_FLK(JL) = PT_MNW_N_FLK(JL)
   PC_T_N_FLK(JL)   = ZC_T_CON
 END IF
+
+!------------------------------------------------------------------------------
+!  For very shallow lakes or inundated waters, 
+!  mixing down to the bottom was forced
+!------------------------------------------------------------------------------
+
+END IF VERY_SHALLOW_LAKE_OR_IW
 
 !------------------------------------------------------------------------------
 !  Update the surface temperature.

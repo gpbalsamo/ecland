@@ -14,7 +14,7 @@ SUBROUTINE FLAKE_DRIVER( KIDIA, KFDIA, KLON,         &
                   & PHLICEM1M,PHLMLM1M,                               &
 
                   & PTLICE,PTLMNW,PTLWML,                             &
-                  & PTLBOT,PTLSF,PHLICE,PHLML )
+                  & PTLBOT,PTLSF,PHLICE,PHLML,PSA )
                   
                   
 
@@ -101,6 +101,9 @@ REAL (KIND = JPRB), INTENT(IN) :: PFRTI    (:,:)  ! TILE FRACTIONS
 REAL (KIND = JPRB), INTENT(IN) :: PTSTP        ! The model time step [s]
 TYPE(TCST),         INTENT(IN) :: YDCST
 TYPE(TFLAKE),       INTENT(IN) :: YDFLAKE
+
+! Field(s) required to compute bottom heat flux
+REAL (KIND = JPRB), INTENT(IN)  :: PSA      (:,:) ! Temperature of the soil layers [K]
 
 ! The prognostic variables at previous time step  
 
@@ -268,7 +271,7 @@ ASSOCIATE(RDAY=>YDCST%RDAY, RPI=>YDCST%RPI, &
     &   ZQ_W_FLK           , ZQ_ICE_FLK             , ZU_STAR_W_FLK           ,      &
     &   ZI_ICE_FLK         , ZI_BOT_FLK             , ZI_W_FLK                ,      &
     &   ZI_H_FLK           , ZI_INTM_0_H_FLK        , ZI_INTM_H_D_FLK         ,      &
-  
+    &   PSA                ,                                                         & 
     &   ZT_ICE_N_FLK       , ZT_WML_N_FLK           , ZT_MNW_N_FLK            ,      &
     &   ZT_BOT_N_FLK       , ZH_ICE_N_FLK           , ZH_ML_N_FLK             ,      &
     &   ZC_T_N_FLK         , ZT_SFC_N                                                )

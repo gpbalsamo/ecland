@@ -1,6 +1,7 @@
 MODULE SUSSOIL_MOD
 CONTAINS
-SUBROUTINE SUSSOIL(PTHRFRTI,LD_LEVGEN,LD_LESSRO,LD_LESN09,LD_LESNML,LD_LESNICE,PNSNMLWS,&
+SUBROUTINE SUSSOIL(PTHRFRTI,LD_LEVGEN,LD_LESSRO,LD_LEIRRIGATION,&
+ & LD_LESN09,LD_LESNML,LD_LESNICE,PNSNMLWS,&
  & YDDIM,YDCST,YDSOIL,PRALFMINPSN,PRCIMIN)
 USE PARKIND1  , ONLY : JPIM, JPRB, JPRD
 USE YOMHOOK   , ONLY : LHOOK, DR_HOOK, JPHOOK
@@ -62,7 +63,7 @@ USE CPTAVE_MOD
 !     R. Hogan             26-02-2019  Revert "compensation for albedo correction" (led to snow overestimate)
 !     R. Hogan             07-03-2019  Permanent-snow albedo RALFMINPSN no longer hard coded
 !     I. Ayan-Miguez (BSC) Oct 2023:   Move derived spatially distributed parameters to surf/module/susdp_deriv_ctl_mod.F90 routine
-
+!     G. Balsamo   ECMWF   11-11-2025  Include irrigation
 
 !     ------------------------------------------------------------------
 
@@ -74,6 +75,7 @@ IMPLICIT NONE
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PTHRFRTI
 LOGICAL           ,INTENT(IN)    :: LD_LEVGEN
 LOGICAL           ,INTENT(IN)    :: LD_LESSRO
+LOGICAL           ,INTENT(IN)    :: LD_LEIRRIGATION
 LOGICAL           ,INTENT(IN)    :: LD_LESN09
 LOGICAL           ,INTENT(IN)    :: LD_LESNML
 LOGICAL           ,INTENT(IN)    :: LD_LESNICE
@@ -102,7 +104,7 @@ IF (LHOOK) CALL DR_HOOK('SUSSOIL_MOD:SUSSOIL',0,ZHOOK_HANDLE)
 ASSOCIATE(RPI=>YDCST%RPI, RTT=>YDCST%RTT, &
  & NCSS=>YDDIM%NCSS,NCSNEC=>YDDIM%NCSNEC, &
  & LESN09=>YDSOIL%LESN09, LESNML=>YDSOIL%LESNML, LESNICE=>YDSOIL%LESNICE, &
- & NLEVSN=>YDSOIL%NLEVSN, LESSRO=>YDSOIL%LESSRO, LEVGEN=>YDSOIL%LEVGEN, &
+ & NLEVSN=>YDSOIL%NLEVSN, LESSRO=>YDSOIL%LESSRO, LEVGEN=>YDSOIL%LEVGEN, LEIRRIGATION=>YDSOIL%LEIRRIGATION, &
  & NSOTY=>YDSOIL%NSOTY, RALFMINPSN=>YDSOIL%RALFMINPSN, & 
  & RCIMIN=>YDSOIL%RCIMIN, RCONDSICE=>YDSOIL%RCONDSICE, RCWPSIS=>YDSOIL%RCWPSIS, &
  & RDFSICE=>YDSOIL%RDFSICE, RFRSMALL=>YDSOIL%RFRSMALL, &
@@ -130,6 +132,81 @@ RQSNCR =1.0_JPRB/RQSNCRINV
 
 LEVGEN=LD_LEVGEN
 LESSRO=LD_LESSRO
+LEIRRIGATION=LD_LEIRRIGATION
+
+! Prototype additive soil water-vapour flux (see SRFWVAPOR_MOD). Switch is
+! LEWVFLUX, namelist-set via NAMPARSOIL (RDNML_SOIL -> TMP_SURF ->
+! SUSSURF_PARAMS -> YDSOIL, all ahead of this call) -- do NOT assign
+! YDSOIL%LEWVFLUX here, SUSSURF_PARAMS already has and this call runs after
+! it. Defaults to .FALSE. (plain baseline ecLand) if unset in the namelist.
+
+! Prototype: floor the VG hydraulic conductivity/diffusivity lookup at
+! wilting point instead of residual moisture (see SRFWEXC_VG). Switch is
+! LEWPFLOOR, namelist-set the same way as LEWVFLUX above -- independent of
+! it, test separately first. Defaults to .FALSE.
+
+! Prototype: floor the frozen-fraction hydraulic conductivity at the same
+! wilting-point value as LEWPFLOOR, instead of letting it blend to zero as
+! ice fraction -> 1 (see SRFWEXC_VG, the LLFREEZ blocks). Switch is
+! LEFRZFLOOR, namelist-set the same way -- independent of LEWPFLOOR/
+! LEWVFLUX above, test separately first. Defaults to .FALSE.
+
+! Prototype: replace the default Zeng et al. (1998) double-exponential root
+! fraction with the Stevens et al. (2020) uniform-to-RDMAXROOT one (see
+! SUSDP_DFLT_CTL). Switch is LEUNIFORMROOT, namelist-set the same way as
+! the others above (defaults to .FALSE.) -- independent of them, test
+! separately first. RDMAXROOT itself is not yet namelist-wired (still set
+! here): <=0 means "auto", each point/canopy layer gets its own rooting
+! depth, derived from the existing Zeng profile weighted by local soil
+! capacity (see SUSDP_DFLT_CTL) rather than one fixed number for every
+! vegetation type. Set RDMAXROOT to a fixed positive value instead to pin
+! every point to that one depth -- the flat-scalar behaviour used for the
+! AU-DaS sensitivity sweeps earlier this session (0.5-10 m tested; deeper
+! values traded NEE skill for Qle/Qh skill, see session notes).
+YDSOIL%RDMAXROOT=-1.0_JPRB
+
+! Prototype: taper free-drainage conductivity at the bottom layer towards
+! zero once the modelled profile depth reaches the real depth to bedrock
+! (see SRFWEXC_VG). RDBEDROCK is a single global scalar for now, not yet
+! per-gridpoint. Unlike RDMAXROOT above, there's no analogous way to derive
+! a meaningful per-vegetation/per-texture bedrock depth from quantities
+! ecLand already has -- depth to bedrock is a genuinely external physical
+! fact, not inferable from soil texture class or vegetation type the way
+! rooting depth could be inferred from the existing Zeng profile. So the
+! safe "no data available" default here is different in kind: deep enough
+! to be inert everywhere, reproducing today's unconstrained free-drainage
+! behaviour, rather than guessing a plausible-looking shallow value with no
+! real basis. 100m clears every discretisation tested this session,
+! including the deepest (14-layer, 12m column).
+! AU-Tum verification (RDBEDROCK=2.62m, its own real Shangguan et al. 2017
+! value, 4-layer): deepest layer's mean SoilMoist moved 683->690 kg/m2
+! (small, expected -- ZWCONS is rarely the rate-limiting flux, so a ~14%
+! conductivity taper barely registers). An exaggerated RDBEDROCK=1.0m (full
+! shutoff) confirmed the mechanism is correctly wired: deepest layer backed
+! up to near-saturation (683->826 kg/m2). That test also surfaced a real
+! interpretation trap: ecLand's exported Qsb diagnostic is the LESSRO/VIC-
+! style saturation-excess subsurface runoff, NOT literally "flux out the
+! bottom of the profile" -- blocking bottom drainage makes Qsb go UP (more
+! saturation-excess runoff once the profile backs up), not down. Don't use
+! Qsb alone to judge this switch's effect; check layer-resolved SoilMoist
+! instead. To reproduce that test, override RDBEDROCK=2.62_JPRB here. Switch
+! is LEBEDROCKLIM, namelist-set the same way as LEWVFLUX etc. above
+! (defaults to .FALSE.); RDBEDROCK itself is not yet namelist-wired (still
+! set here).
+YDSOIL%RDBEDROCK=100.0_JPRB
+
+! Prototype: bidirectional water-table/soil exchange (capillary-rise
+! extraction, free-drainage recharge) against a genuine, restart-checkpointed
+! prognostic water-table depth field (see SRFGWRECHARGE_MOD) -- its own
+! "no data available" default (100m, deep enough to be inert everywhere,
+! same rationale as RDBEDROCK) lives in sugp1s.F90's cold start and
+! rdsupr.F90's "missing from restart file" fallback, not here. RGWSPECYIELD
+! sets the aquifer's size (see yos_soil.F90) -- 0.1 is an honest guess in the
+! middle of the typical literature range, not a calibration; not yet
+! namelist-wired (still set here). Switch is LEGWRECHARGE, namelist-set the
+! same way as the others above (defaults to .FALSE.) -- independent of them,
+! test separately first.
+YDSOIL%RGWSPECYIELD=0.1_JPRB
 
 !    SNOW LOGICALS
 
@@ -172,39 +249,8 @@ DO I=1,NCSS
   YDSOIL%RDAI(I)=YDSOIL%RDAT(I)
 ENDDO
 
-!------------------------------------------------------------!
-! 9-layers definition in cm (for a total depth of 300 cm)
-!-----------!-------------!--------------!-------------------!
-!thichness      mid-point    upper-bound     lower-bound
-!-----------!-------------!--------------!-------------------!
-!   1.0            0.5           0.0            1.0
-!   2.0            2.5           1.0            3.0
-!   4.0            4.5           3.0            7.0
-!   8.0           11.0           7.0           15.0
-!  10.0           16.0          15.0           25.0
-!  25.0           37.5          25.0           50.0
-!  50.0           75.0          50.0          100.0
-! 100.0          150.0         100.0          200.0  
-! 100.0          250.0         200.0          300.0
-IF (NCSS == 9) THEN 
-  YDSOIL%RDAT(1)=0.01_JPRB   
-  YDSOIL%RDAT(2)=0.02_JPRB
-  YDSOIL%RDAT(3)=0.04_JPRB
-  YDSOIL%RDAT(4)=0.08_JPRB
-  YDSOIL%RDAT(5)=0.10_JPRB
-  YDSOIL%RDAT(6)=0.25_JPRB
-  YDSOIL%RDAT(7)=0.50_JPRB
-  YDSOIL%RDAT(8)=1.00_JPRB
-  YDSOIL%RDAT(9)=1.00_JPRB
-  DO I=1,NCSS
-    YDSOIL%RDAW(I)=YDSOIL%RDAT(I)
-    YDSOIL%RDAI(I)=MIN(YDSOIL%RDAT(I),0.25_JPRB)
-  ENDDO
-ENDIF
-
-
 !-----------------------------------------------------------------!
-! 10-layers definition in cm (for a total depth of 800 cm)
+! 9-layers definition in cm (for a total depth of 289 cm)
 !-----------!---------------!-----------------!-------------------!
 !layer   thichness      mid-point    upper-bound     lower-bound
 !-----!----------!-------------!--------------!-------------------!
@@ -215,27 +261,107 @@ ENDIF
 ! 5     12.0           22.0          16.0           28.0
 ! 6     30.0           43.0          28.0           58.0
 ! 7     42.0           79.0          58.0          100.0
-! 8    100.0          150.0         100.0          200.0                         
-! 9    200.0          300.0         200.0          400.0
-!10    400.0          600.0         400.0          800.0
-!-----!----------!-------------!--------------!-------------------!
-
-IF (NCSS == 10) THEN 
-  YDSOIL%RDAT(1)=0.01_JPRB   
+! 8     89.0          144.5         100.0          189.0
+! 9    100.0          239.0         189.0          289.0
+!-----------!-------------!--------------!-------------------!
+IF (NCSS == 9) THEN
+  YDSOIL%RDAT(1)=0.01_JPRB
   YDSOIL%RDAT(2)=0.02_JPRB
   YDSOIL%RDAT(3)=0.04_JPRB
   YDSOIL%RDAT(4)=0.09_JPRB
   YDSOIL%RDAT(5)=0.12_JPRB
   YDSOIL%RDAT(6)=0.30_JPRB
   YDSOIL%RDAT(7)=0.42_JPRB
-  YDSOIL%RDAT(8)=1.00_JPRB
-  YDSOIL%RDAT(9)=2.00_JPRB
-  YDSOIL%RDAT(10)=4.00_JPRB
+  YDSOIL%RDAT(8)=0.89_JPRB
+  YDSOIL%RDAT(9)=1.00_JPRB
   DO I=1,NCSS
     YDSOIL%RDAW(I)=YDSOIL%RDAT(I)
-    YDSOIL%RDAI(I)=MIN(YDSOIL%RDAT(I),0.25_JPRB)
+    YDSOIL%RDAI(I)=YDSOIL%RDAT(I)
+!   YDSOIL%RDAI(I)=MIN(YDSOIL%RDAT(I),0.25_JPRB)
   ENDDO
 ENDIF
+
+
+!-----------------------------------------------------------------!
+! 10-layers definition in cm (for a total depth of 500 cm)
+!-----------!---------------!-----------------!-------------------!
+!layer   thichness      mid-point    upper-bound     lower-bound
+!-----!----------!-------------!--------------!-------------------!
+! 1      1.0            0.5           0.0            1.0
+! 2      2.0            2.0           1.0            3.0
+! 3      4.0            5.0           3.0            7.0
+! 4      9.0           11.5           7.0           16.0
+! 5     12.0           22.0          16.0           28.0
+! 6     30.0           43.0          28.0           58.0
+! 7     42.0           79.0          58.0          100.0
+! 8     89.0          144.5         100.0          189.0
+! 9    100.0          239.0         189.0          289.0
+!10    211.0          394.5         289.0          500.0
+!-----!----------!-------------!--------------!-------------------!
+
+IF (NCSS == 10) THEN
+  YDSOIL%RDAT(1)=0.01_JPRB
+  YDSOIL%RDAT(2)=0.02_JPRB
+  YDSOIL%RDAT(3)=0.04_JPRB
+  YDSOIL%RDAT(4)=0.09_JPRB
+  YDSOIL%RDAT(5)=0.12_JPRB
+  YDSOIL%RDAT(6)=0.30_JPRB
+  YDSOIL%RDAT(7)=0.42_JPRB
+  YDSOIL%RDAT(8)=0.89_JPRB
+  YDSOIL%RDAT(9)=1.00_JPRB
+  YDSOIL%RDAT(10)=2.11_JPRB
+  DO I=1,NCSS
+    YDSOIL%RDAW(I)=YDSOIL%RDAT(I)
+    YDSOIL%RDAI(I)=YDSOIL%RDAT(I)
+!   YDSOIL%RDAI(I)=MIN(YDSOIL%RDAT(I),0.25_JPRB)
+  ENDDO
+ENDIF
+
+!-----------------------------------------------------------------!
+! 14-layers definition in cm (for a total depth of 1200 cm)
+! Inspired by ISBA-DF depths of the 14 layers (Decharme et al 2019)
+! 0.01 0.04 0.10 0.20 0.40 0.60 0.80 1.00 1.50 2.00 3.00 5.00 8.00 12.0
+! https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2018MS001545
+!-----------!---------------!-----------------!-------------------!
+!layer   thichness      mid-point    upper-bound     lower-bound
+!-----!----------!-------------!--------------!-------------------!
+! 1      1.0            0.5           0.0            1.0
+! 2      2.0            2.0           1.0            3.0
+! 3      4.0            5.0           3.0            7.0
+! 4      9.0           11.5           7.0           16.0
+! 5     12.0           22.0          16.0           28.0
+! 6     30.0           43.0          28.0           58.0
+! 7     42.0           79.0          58.0          100.0
+! 8     50.0          125.0         100.0          150.0
+! 9     50.0          175.0         150.0          200.0
+!10     89.0          244.5         200.0          289.0
+!11    111.0          344.5         289.0          400.0
+!12    100.0          450.0         400.0          500.0
+!13    300.0          650.0         500.0          800.0
+!14    400.0         1000.0         800.0         1200.0
+!-----!----------!-------------!--------------!-------------------!
+IF (NCSS == 14) THEN
+  YDSOIL%RDAT(1)=0.01_JPRB
+  YDSOIL%RDAT(2)=0.02_JPRB
+  YDSOIL%RDAT(3)=0.04_JPRB
+  YDSOIL%RDAT(4)=0.09_JPRB
+  YDSOIL%RDAT(5)=0.12_JPRB
+  YDSOIL%RDAT(6)=0.30_JPRB
+  YDSOIL%RDAT(7)=0.42_JPRB
+  YDSOIL%RDAT(8)=0.50_JPRB
+  YDSOIL%RDAT(9)=0.50_JPRB
+  YDSOIL%RDAT(10)=0.89_JPRB
+  YDSOIL%RDAT(11)=1.11_JPRB
+  YDSOIL%RDAT(12)=1.00_JPRB
+  YDSOIL%RDAT(13)=3.00_JPRB
+  YDSOIL%RDAT(14)=4.00_JPRB
+  DO I=1,NCSS
+    YDSOIL%RDAW(I)=YDSOIL%RDAT(I)
+    YDSOIL%RDAI(I)=YDSOIL%RDAT(I)
+!   YDSOIL%RDAI(I)=MIN(YDSOIL%RDAT(I),0.25_JPRB)
+  ENDDO
+ENDIF
+
 !     CONSTANTS FOR HYDRAULIC DIFFUSIVITY AND HYDRAULIC CONDUCTIVITY
 !GPB IF (LEVGEN) THEN
 ! VAN GENUCHTEN (MV) HYDROLOGY
@@ -273,19 +399,28 @@ ENDIF
   ZWSATM(1:NSOTY)=(/0.403_JPRB,0.439_JPRB,0.430_JPRB,0.520_JPRB,0.614_JPRB,0.766_JPRB,0.439_JPRB/)
   ZWRES(1:NSOTY)=(/0.025_JPRB,0.010_JPRB,0.010_JPRB,0.010_JPRB,0.010_JPRB,0.010_JPRB,0.010_JPRB/)
 
-! Set 0 SOILTYPE (WATER) VALUES TO 0
-  ZMVGALPHA(0)=0.0_JPRB
-  ZWCONSM(0)=0.0_JPRB
-  ZNFAC(0)=0.0_JPRB
-  ZLAMBDA(0)=0.0_JPRB
-  ZWSATM(0)=0.0_JPRB
-  ZWRES(0)=0.0_JPRB
-  YDSOIL%RMVGALPHA(0)=0.0_JPRB
-  YDSOIL%RWCONSM(0)=0.0_JPRB
-  YDSOIL%RNFACM(0)=0.0_JPRB
-  YDSOIL%RLAMBDAM(0)=0.0_JPRB
-  YDSOIL%RWSATM(0)=0.0_JPRB
-  YDSOIL%RWRESTM(0)=0.0_JPRB
+! SOILTYPE 0 (WATER) TAKES THE MEDIUM (LOAM) VALUES, NOT ZEROS.
+! Zeroing these used to be harmless because nothing read a soil column at a
+! water point. It is not harmless once one does: index 0 is what
+! SUSDP_DFLT_CTL looks up for such a point, so the zeros propagate into
+! RWSATM3D/RMVGALPHA3D/RNFACM3D/RWRESTM3D, and every consumer that divides by
+! them inherits a 0/0 -- SURFRAD_CTL's 1/(RWCAPM3D-RWPWPM3D) and
+! SRFSN_LWIMPMLS's 1/RWSATM3D among them. Medium is the same fallback
+! SUSSOIL already makes for the Clapp-Hornberger scalars below
+! (RWSAT=ZTHESAT(2)), so a water point now carries a defined, if notional,
+! field capacity and permanent wilting point instead of an undefined one.
+  ZMVGALPHA(0)=ZMVGALPHA(2)
+  ZWCONSM(0)=ZWCONSM(2)
+  ZNFAC(0)=ZNFAC(2)
+  ZLAMBDA(0)=ZLAMBDA(2)
+  ZWSATM(0)=ZWSATM(2)
+  ZWRES(0)=ZWRES(2)
+  YDSOIL%RMVGALPHA(0)=ZMVGALPHA(2)
+  YDSOIL%RWCONSM(0)=ZWCONSM(2)
+  YDSOIL%RNFACM(0)=ZNFAC(2)
+  YDSOIL%RLAMBDAM(0)=ZLAMBDA(2)
+  YDSOIL%RWSATM(0)=ZWSATM(2)
+  YDSOIL%RWRESTM(0)=ZWRES(2)
 
   DO JS=1,NSOTY
     YDSOIL%RMVGALPHA(JS)=ZMVGALPHA(JS)

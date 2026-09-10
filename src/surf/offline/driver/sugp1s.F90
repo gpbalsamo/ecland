@@ -4,15 +4,15 @@ USE YOMHOOK   ,ONLY : LHOOK    ,DR_HOOK, JPHOOK
 
 USE YOMGP1S0 , ONLY : GP0      ,TSLNU0   ,QLINU0   ,TILNU0   ,&
                       &FSNNU0   ,TSNNU0   ,ASNNU0   ,RSNNU0   ,WSNNU0,&
-                      &TRENU0   ,WRENU0,&
-                      &TLICENU0,TLMNWNU0,TLWMLNU0,TLBOTNU0,TLSFNU0,& 
+                      &TRENU0   ,WRENU0   ,WTDNU0,&
+                      &TLICENU0,TLMNWNU0,TLWMLNU0,TLBOTNU0,TLSFNU0,&
                       &HLICENU0,HLMLNU0,&                            
                       &UONU0   ,VONU0     ,TONU0    ,SONU0,&           
                       &LAINU0, BSTRNU0, BSTR2NU0            
 
 USE YOMGP1SA , ONLY : GPA      ,TSLNUA   ,QLINUA   ,TILNUA   ,&
                       &FSNNUA   ,TSNNUA   ,ASNNUA   ,RSNNUA   ,WSNNUA,&
-                      &TRENUA   ,WRENUA   ,QLQNUA,&
+                      &TRENUA   ,WRENUA   ,WTDNUA   ,QLQNUA,&
                       &TLICENUA,TLMNWNUA,TLWMLNUA,TLBOTNUA,TLSFNUA,& 
                       &HLICENUA,HLMLNUA,&                            
                       &UONUA   ,VONUA     ,TONUA    ,SONUA ,&          
@@ -20,7 +20,7 @@ USE YOMGP1SA , ONLY : GPA      ,TSLNUA   ,QLINUA   ,TILNUA   ,&
 
 USE YOMGP1S1 , ONLY : GP1      ,TSLNU1   ,QLINU1   ,TILNU1   ,&
                       &FSNNU1   ,TSNNU1   ,ASNNU1   ,RSNNU1   ,&
-                      &TRENU1   ,WRENU1,&
+                      &TRENU1   ,WRENU1   ,WTDNU1,&
                       &TLICENU1,TLMNWNU1,TLWMLNU1,TLBOTNU1,TLSFNU1,WSNNU1,& 
                       &HLICENU1,HLMLNU1,&                            
                       &UONU1   ,VONU1     ,TONU1    ,SONU1,&         
@@ -28,7 +28,7 @@ USE YOMGP1S1 , ONLY : GP1      ,TSLNU1   ,QLINU1   ,TILNU1   ,&
 
 USE PTRGP1S  , ONLY : MTSLNU   ,MQLINU   ,MTILNU   ,MFSNNU   ,&
                       &MTSNNU   ,MASNNU   ,MRSNNU   ,MWSNNU,&
-                      &MTRENU   ,MWRENU   ,MQLQNU, & 
+                      &MTRENU   ,MWRENU   ,MWTDNU   ,MQLQNU, &
                       &MTLICENU,MTLMNWNU,MTLWMLNU,MTLBOTNU,MTLSFNU,& 
                       &MHLICENU,MHLMLNU,&                            
                       &MUONU   ,MVONU     ,MTONU    ,MSONU,&         
@@ -151,7 +151,8 @@ MRSNNU=MWSNNU+NCSNEC
 MASNNU=MRSNNU+NCSNEC
 MTRENU=MASNNU+1
 MWRENU=MTRENU+1
-MUONU=MWRENU+1                  
+MWTDNU=MWRENU+1
+MUONU=MWTDNU+1
 MVONU=MUONU+(NCOM+1)            
 MTONU=MVONU+(NCOM+1)            
 MSONU=MTONU+(NCOM+1)            
@@ -189,6 +190,7 @@ WSNNU0 => GP0(:,MWSNNU:MWSNNU+NCSNEC-1,:)
 ASNNU0 => GP0(:,MASNNU,:)
 TRENU0 => GP0(:,MTRENU,:)
 WRENU0 => GP0(:,MWRENU,:)
+WTDNU0 => GP0(:,MWTDNU,:)
 
 UONU0 => GP0(:,MUONU:MUONU+(NCOM+1)-1,:)   !KPP
 VONU0 => GP0(:,MVONU:MVONU+(NCOM+1)-1,:)   !KPP
@@ -220,6 +222,7 @@ WSNNU1 => GP1(:,MWSNNU:MWSNNU+NCSNEC-1,:)
 ASNNU1 => GP1(:,MASNNU,:)
 TRENU1 => GP1(:,MTRENU,:)
 WRENU1 => GP1(:,MWRENU,:)
+WTDNU1 => GP1(:,MWTDNU,:)
 
 UONU1 => GP1(:,MUONU:MUONU+(NCOM+1)-1,:)   !KPP
 VONU1 => GP1(:,MVONU:MVONU+(NCOM+1)-1,:)   !KPP
@@ -264,6 +267,7 @@ WSNNUA => GPA(:,MWSNNU:MWSNNU+NCSNEC-1)
 ASNNUA => GPA(:,MASNNU)
 TRENUA => GPA(:,MTRENU)
 WRENUA => GPA(:,MWRENU)
+WTDNUA => GPA(:,MWTDNU)
 QLQNUA => GPA(:,MQLQNU:MQLQNU+NCSS-1)
 
 UONUA => GPA(:,MUONU:MUONU+(NCOM+1)-1)   !KPP
@@ -320,6 +324,7 @@ ELSE
   RSNNU0(1,1:NCSNEC,1)=RSNNU(1:NCSNEC)
   TRENU0(1,1)=TRENU
   WRENU0(1,1)=WRENU
+  WTDNU0(1,1)=100._JPRB ! water-table depth "no data" default (LEGWRECHARGE)
 
   TLICENU0(:,:) =TLICENU
   TLMNWNU0(:,:) =TLMNWNU
@@ -356,7 +361,8 @@ ELSE
   WRITE(UNIT=KULOUT,FMT=*) ' RSNNU0   =  ',RSNNU0(1,1,1)
   WRITE(UNIT=KULOUT,FMT=*) ' TRENU0   =  ',TRENU0(1,1)
   WRITE(UNIT=KULOUT,FMT=*) ' WRENU0   =  ',WRENU0(1,1)
-  
+  WRITE(UNIT=KULOUT,FMT=*) ' WTDNU0   =  ',WTDNU0(1,1)
+
   WRITE(UNIT=KULOUT,FMT=*) ' TLICENU   =  ',TLICENU0(1,1)
   WRITE(UNIT=KULOUT,FMT=*) ' TLMNWNU   =  ',TLMNWNU0(1,1)
   WRITE(UNIT=KULOUT,FMT=*) ' TLWMLNU   =  ',TLWMLNU0(1,1)

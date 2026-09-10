@@ -150,6 +150,9 @@ SELECT CASE(CNAME)
   CASE('cu')
     CLNAME='urban coverage'
     CUNITS='-'
+  CASE('irrfrc')
+    CLNAME='irrigation fraction'
+    CUNITS='-'
   CASE('tvl')
     CLNAME='low vegetation type'
     CUNITS='-'
@@ -177,6 +180,9 @@ SELECT CASE(CNAME)
   CASE('CanopInt')
     CLNAME='canopy interception depth'
     CUNITS='kg m-2'
+  CASE('WTD')
+    CLNAME='water table depth'
+    CUNITS='m'
   CASE('SWE')
     CLNAME='snow water equivalent'
     CUNITS='kg m-2'
@@ -233,6 +239,9 @@ SELECT CASE(CNAME)
     CUNITS='m'
   CASE('LDEPTH')
     CLNAME='lake depth'
+    CUNITS='m'
+  CASE('LDEPTHF')
+    CLNAME='lake and floodplain depth'
     CUNITS='m'
   CASE('CLAKE')
     CLNAME='lake cover'
@@ -357,6 +366,18 @@ SELECT CASE(CNAME)
   CASE('Qsb')
     CLNAME='subsurface runoff'
     CUNITS='kg m-2 s-1'
+  CASE('irrflx')
+    CLNAME='irrigation flux'
+    CUNITS='kg m-2 s-1'
+  CASE('Qrec')
+    CLNAME='aquifer recharge (soil to water table)'
+    CUNITS='kg m-2 s-1'
+  CASE('Qcap')
+    CLNAME='capillary rise (water table to soil)'
+    CUNITS='kg m-2 s-1'
+  CASE('DelAquifer')
+    CLNAME='aquifer storage change'
+    CUNITS='kg m-2'
   CASE('DelSoilMoist')
     CLNAME='soil moisture content change'
     CUNITS='kg m-2'

@@ -4,7 +4,7 @@ USE PARKIND1  ,ONLY : JPIM     ,JPRB,  JPRD
 USE YOMHOOK   ,ONLY : LHOOK    ,DR_HOOK, JPHOOK
 USE YOMGP1S0 , ONLY : GP0      ,TSLNU0   ,TILNU0   ,QLINU0 &
                      &,FSNNU0   ,TSNNU0   ,ASNNU0   ,RSNNU0,WSNNU0 &
-                     &,TRENU0   ,WRENU0 &
+                     &,TRENU0   ,WRENU0   ,WTDNU0 &
                      &,TLICENU0,TLMNWNU0,TLWMLNU0,TLBOTNU0,TLSFNU0 & ! FLAKE
                      &,HLICENU0,HLMLNU0 &                             ! FLAKE 
                      &,LAINU0 , BSTRNU0, BSTR2NU0,UONU0,VONU0,TONU0,SONU0 
@@ -310,11 +310,11 @@ ENDDO
 
 
 ALLOCATE (ZREALD(NLALO))
-NVARS2D=14
+NVARS2D=15
  CVARS2D(1:NVARS2D)=(/'SWE      ','snowdens ','SAlbedo  ','SnowT    ',&
                       'CanopInt ','AvgSurfT ','TLICE    ','TLMNW    ',&
                       'TLWML    ','TLBOT    ','TLSF     ','HLICE    ',&
-                      'HLML     ','slw      '/)
+                      'HLML     ','slw      ','WTD      '/)
 
 DO IVAR=1,NVARS2D
   CVAR=TRIM(CVARS2D(IVAR))
@@ -426,13 +426,36 @@ DO IVAR=1,NVARS2D
       CALL MPL_SCATTERV(PRECVBUF=ZBUF(:),KROOT=1,PSENDBUF=ZREALD(:),KSENDCOUNTS=NPOIPALL(:),CDSTRING="RDSUPR:WSNNU0")
       RECV_BUF = PACK(ZBUF(:),LMASK(ISP:IENP))
       CALL UNPACK_BUFFER(WSNNU0(:,1,:), RECV_BUF)
+    CASE('WTD')
+      IF( MYPROC == 1 ) THEN
+        IF ( STATUS /= 0 ) THEN
+          ZREALD(:) = 100._JPRB ! water-table depth "no data" default (LEGWRECHARGE)
+          WRITE(NULOUT,'(A)') CVAR//' Set to default 100m'
+        ENDIF
+!       Clip to [RGWTD_MIN,RDBEDROCK] -- SRFGWRECHARGE_MOD's own clamp bounds
+!       (currently 0.5m / 100.0m, matching this file's "no data" default above).
+!       An init/restart file can legitimately carry a target deeper than
+!       RDBEDROCK (e.g. Fan et al. 2017 water-table depth, which reaches
+!       257m at CN-Din and 197m at FR-Pue against RDBEDROCK=100m) -- reading
+!       that in unclipped means SRFGWRECHARGE's own per-timestep clamp does
+!       the correction instead, in one step, with no matching Qrec/Qcap flux:
+!       measured as a ~15700 kg/m2 DelAquifer jump at CN-Din's very first
+!       timestep against a Qrec of 0.047 kg/m2 that step, i.e. water
+!       conjured from nowhere in the aquifer accounting. Clipping here makes
+!       the initial condition itself consistent with the bounds the scheme
+!       enforces from then on, so there is no such correction to account for.
+        ZREALD(:) = MAX(0.5_JPRB,MIN(100._JPRB,ZREALD(:)))
+      ENDIF
+      CALL MPL_SCATTERV(PRECVBUF=ZBUF(:),KROOT=1,PSENDBUF=ZREALD(:),KSENDCOUNTS=NPOIPALL(:),CDSTRING="RDSUPR:WTDNU0")
+      RECV_BUF = PACK(ZBUF(:),LMASK(ISP:IENP))
+      CALL UNPACK_BUFFER(WTDNU0(:,:), RECV_BUF)
     CASE DEFAULT
       WRITE(NULOUT,*) CVAR, ' Not defined in RDCLIM'
       CALL ABOR1('RDSUPR:')
   END SELECT
   IF( MYPROC == 1 ) THEN
     WRITE(CDUM,*)TRIM(CVAR)
-    CALL MINMAX(CDUM,ZREALD,NMX,NMY,LMASK,NULOUT)
+    CALL MINMAX(CDUM,ZREALD,NMX,NMY,LMASK(ISP:IENP),NULOUT)
   ENDIF
   CALL MPL_BARRIER()
 ENDDO
@@ -587,7 +610,7 @@ DO IVAR=1,NVARS3D
     END SELECT
     IF( MYPROC == 1 ) THEN
       WRITE(CDUM,'(A8,I2.2)')TRIM(CVAR),ILEVS
-      CALL MINMAX(CDUM,ZREAL3D(:,IVTYPES),NMX,NMY,LMASK,NULOUT)
+      CALL MINMAX(CDUM,ZREAL3D(:,IVTYPES),NMX,NMY,LMASK(ISP:IENP),NULOUT)
     ENDIF
     CALL MPL_BARRIER()
   ENDDO

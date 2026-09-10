@@ -214,7 +214,7 @@ DO JL=KIDIA,KFDIA
     LLNOSNOW(JL)=.FALSE.
   ENDIF
 
-  LDLAND(JL) = LSMASK(JL) > 0.5_JPRB
+  LDLAND(JL) = LSMASK(JL) > 0.01_JPRB
 ENDDO
 
 !******************************************************************

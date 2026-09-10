@@ -233,7 +233,11 @@ ZLAMBDASM=(RLAMBDAQ**ZQ)*(RLAMBDAO**(1.0_JPRB-ZQ))
 ZEPSILON=100._JPRB*EPSILON(ZEPSILON)
 
 DO JL=KIDIA, KFDIA
-  IF (PSLT(JL) >= 1) THEN    
+! Soil type 0 (water) now carries the medium-soil van Genuchten parameters
+! (SUSSOIL), so its field capacity and wilting point are derivable like any
+! other type's. Deriving them is the point: leaving RWCAPM3D/RWPWPM3D at zero
+! while the inputs are defined would reproduce the very failure this avoids.
+  IF (PSLT(JL) >= 0) THEN    
 
     RWCAPM3D(JL,:) = RWRESTM3D(JL,:)+(RWSATM3D(JL,:)-RWRESTM3D(JL,:)) &
       &       *(1._JPRB/(1._JPRB+((ABS(RMVGALPHA3D(JL,:)*ZPSICAP)) &

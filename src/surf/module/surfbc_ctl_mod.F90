@@ -129,6 +129,7 @@ USE YOMSURF_SSDP_MOD
 !     I. Ayan-Miguez         June 2023 Add refactorization of RVCOV
 !     J. McNorton           24/08/2022  urban tile
 !     G. Arduini             2024 general land/sea ice tile
+!     G. Balsamo             2026 protect tiles in presence of dynamic water fraction
 !     ------------------------------------------------------------------
 
 IMPLICIT NONE
@@ -277,7 +278,13 @@ ENDDO
 !         Miscellaneous fields needed elsewhere
 DO JL=KIDIA,KFDIA
   LDLAND(JL)=PLSM(JL) > 0.5_JPRB
-  LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. (PCLAKE(JL) > 0.5_JPRB))  !all land points and resolved lakes are going in the lake calculations
+! The lake threshold interpolates between 0.5 at PLSM=1 and 1.0 at PLSM=0, so
+! at a water point it is an equality test against CLAKE=1.0. The 1.E-6 keeps
+! a fully resolved lake on the lake side of it when the physiography stores
+! that 1.0 through single precision (0.99999994), which would otherwise switch
+! FLake off at exactly the points it is meant to run at.
+  LDLAKE(JL)= (LEFLAKE .AND. LDLAND(JL)).OR.(LEFLAKE .AND. &
+   & (PCLAKE(JL) >= (1.0_JPRB-PLSM(JL)/2.0_JPRB)-1.0E-6_JPRB))  !all land points and resolved lakes are going in the lake calculations
   LDSICE(JL)=(PCI(JL) > RCIMIN).AND.(.NOT. LDLAND(JL)).AND.(.NOT. LDLAKE(JL))  ! FOR SEAMLESS TREATMENT OF ICE OVER WATER
   LDLICE(JL)=((PCIL(JL) > RCIMIN).AND.(LDLAND(JL)))  ! FOR SEAMLESS TREATMENT OF ICE OVER LAND
   LDNH(JL)=PGEMU(JL) > 0.0_JPRB
@@ -350,7 +357,7 @@ DO JL=KIDIA,KFDIA
     IF ( LDLAKE(JL) .AND. .NOT. LDLAND(JL) ) THEN
       ZPCVLK=1.0_JPRB
     ELSEIF (LDLAKE(JL)) THEN
-      ZPCVLK=PCLAKE(JL)
+      ZPCVLK=MIN(MAX(PCLAKE(JL),0.0_JPRB),1.0_JPRB) !LAKE AND FLOODED FRACTION
     ELSE
       ZPCVLK=0.0_JPRB
     ENDIF
@@ -366,15 +373,15 @@ DO JL=KIDIA,KFDIA
       PCUR(JL)=1.0_JPRB-ZPCVLK-ZFRTIT
     ENDIF      
       PFRTI(JL,2)=ZFRTIT*(1.0_JPRB-ZCVS(JL))
-      ZPCVL=PCVL(JL)*(1.0_JPRB-ZPCVLK-ZFRTIT)    ! LOW VEGETATION FRACTION
-      ZPCVH=PCVH(JL)*(1.0_JPRB-ZPCVLK-ZFRTIT)    ! HIGH VEGETATION FRACTION
-      ZPCVB=1.0_JPRB-ZPCVL-ZPCVH-ZPCVLK -ZFRTIT  ! BARE SOIL FRACTION
-      PFRTI(JL,3)=ZCVW(JL)*(1.0_JPRB-ZCVS(JL))*(ZPCVL+ZPCVH+ZPCVB)
+      ZPCVL=MAX(0._JPRB,PCVL(JL)*(1.0_JPRB-ZPCVLK-ZFRTIT))    ! LOW VEGETATION FRACTION
+      ZPCVH=MAX(0._JPRB,PCVH(JL)*(1.0_JPRB-ZPCVLK-ZFRTIT))    ! HIGH VEGETATION FRACTION
+      ZPCVB=MAX(0._JPRB,(1.0_JPRB-ZPCVL-ZPCVH-ZPCVLK -ZFRTIT))  ! BARE SOIL FRACTION
+      PFRTI(JL,3)=MAX(0._JPRB,ZCVW(JL)*(1.0_JPRB-ZCVS(JL))*(ZPCVL+ZPCVH+ZPCVB)) !WET SKIN FRACTION
       PFRTI(JL,4)=ZPCVL*(1.0_JPRB-ZCVS(JL))*(1.0_JPRB-ZCVW(JL))
       PFRTI(JL,5)=ZCVS(JL)*(ZPCVB+ZPCVL+ZFRTIT)
       PFRTI(JL,6)=ZPCVH*(1.0_JPRB-ZCVS(JL))*(1.0_JPRB-ZCVW(JL))
       PFRTI(JL,7)=ZCVS(JL)*ZPCVH
-      PFRTI(JL,8)=ZPCVB*(1.0_JPRB-ZCVS(JL))*(1.0_JPRB-ZCVW(JL))
+      PFRTI(JL,8)=MAX(0._JPRB,ZPCVB*(1.0_JPRB-ZCVS(JL))*(1.0_JPRB-ZCVW(JL))) !BARE SOIL FRACTION
       IF (LDLAKE(JL) .AND. (PHLICE(JL)>RH_ICE_MIN_FLK)) THEN
          PFRTI(JL,9)=ZPCVLK*ZLICE(JL)
          PFRTI(JL,1)=ZPCVLK*(1.0_JPRB-ZLICE(JL))
@@ -383,16 +390,16 @@ DO JL=KIDIA,KFDIA
       ENDIF
      
       IF (LEURBAN) THEN !URBAN
-       ZPCVL=PCVL(JL)*(1.0_JPRB-ZPCVLK-PCUR(JL)-ZFRTIT)
-       ZPCVH=PCVH(JL)*(1.0_JPRB-ZPCVLK-PCUR(JL)-ZFRTIT)
-       ZPCVB=1.0_JPRB-ZPCVL-ZPCVH-ZPCVLK-PCUR(JL)-ZFRTIT
-       PFRTI(JL,3)=ZCVW(JL)*(1.0_JPRB-ZCVS(JL))*(ZPCVL+ZPCVH+ZPCVB+PCUR(JL))
+       ZPCVL=MAX(0._JPRB,PCVL(JL)*(1.0_JPRB-ZPCVLK-PCUR(JL)-ZFRTIT))       ! LOW VEGETATION FRACTION
+       ZPCVH=MAX(0._JPRB,PCVH(JL)*(1.0_JPRB-ZPCVLK-PCUR(JL)-ZFRTIT))       ! HIGH VEGETATION FRACTION
+       ZPCVB=MAX(0._JPRB,(1.0_JPRB-ZPCVL-ZPCVH-ZPCVLK-PCUR(JL)-ZFRTIT))     ! BARE SOIL FRACTION
+       PFRTI(JL,3)=MAX(0._JPRB,ZCVW(JL)*(1.0_JPRB-ZCVS(JL))*(ZPCVL+ZPCVH+ZPCVB+PCUR(JL))) !WET SKIN FRACTION
        PFRTI(JL,4)=ZPCVL*(1.0_JPRB-ZCVS(JL))*(1.0_JPRB-ZCVW(JL))
        PFRTI(JL,5)=ZCVS(JL)*(ZPCVB+ZPCVL+PCUR(JL)+ZFRTIT)
        PFRTI(JL,6)=ZPCVH*(1.0_JPRB-ZCVS(JL))*(1.0_JPRB-ZCVW(JL))
        PFRTI(JL,7)=ZCVS(JL)*ZPCVH
-       PFRTI(JL,8)=ZPCVB*(1.0_JPRB-ZCVS(JL))*(1.0_JPRB-ZCVW(JL))
-       PFRTI(JL,10)=PCUR(JL)*(1.0_JPRB-ZCVS(JL))*(1.0_JPRB-ZCVW(JL))
+       PFRTI(JL,8)=MAX(0._JPRB,ZPCVB*(1.0_JPRB-ZCVS(JL))*(1.0_JPRB-ZCVW(JL)))  !BARE SOIL FRACTION
+       PFRTI(JL,10)=MAX(0._JPRB,PCUR(JL)*(1.0_JPRB-ZCVS(JL))*(1.0_JPRB-ZCVW(JL))) !URBAN FRACTION
       ENDIF
 
     ENDIF

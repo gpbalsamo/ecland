@@ -2,10 +2,10 @@ MODULE SRFWEXC_VG_MOD
 CONTAINS
 SUBROUTINE SRFWEXC_VG(KIDIA,KFDIA,KLON,KLEVS,KCWS,KTILES,&
  & PSSDP3,PTMST,KTVL,KTVH,PSDOR,PFRTI,PEVAPTI,&
- & PWSAM1M,PTSAM1M,PCUR,&
+ & PWSAM1M,PTSAM1M,PCUR,PIRFR,PEVAPMU,&
  & PTSFC,PTSFL,PMSN,PEMSSN,PEINTTI,PEVAPSNW,&
  & YDSOIL,YDVEG,YDURB,&
- & PROS,PCFW,PRHSW,&
+ & PROS,PIRFL,PCFW,PRHSW,&
  & PSAWGFL,PFWEL1,PFWE234,&
  & LDLAND,PDHWLS)  
 
@@ -73,6 +73,8 @@ USE YOMSURF_SSDP_MOD, ONLY : SSDP3D_ID, NSSDP3D
 !    *PWSAM1M*    MULTI-LAYER SOIL MOISTURE                    M**3/M**3
 !    *PTSAM1M*    SOIL TEMPERATURE ALL LAYERS                    K
 !    *PCUR*       URBAN COVER                                   (0-1)
+!    *PIRFR*      IRRIGATION FRACTION                           (0-1)
+!    *PEVAPMU*    EVAPORATION FROM UNSTRESSED LAND             KG/M**2/S
 !    *PTSFC*      CONVECTIVE THROUGHFALL                       KG/M**2/S
 !    *PTSFL*      LARGE SCALE THROUGHFALL                      KG/M**2/S
 !    *PMSN*       SNOW MELTING                                 KG/M**2/S
@@ -88,6 +90,7 @@ USE YOMSURF_SSDP_MOD, ONLY : SSDP3D_ID, NSSDP3D
 !    *PCFW*       MODIFIED DIFFUSIVITIES                         M
 !    *PRHSW*      RIGHT-HAND SIDE OF SOIL MOISTURE EQUATIONS   m**3/m**3
 !    *PROS*       RUN-OFF FOR THE SURFACE LAYER                kg/m**2
+!    *PIRFL*      IRRIGATION FLUX                              KG/M**2/S
 !    *PFWEL1*     BARE GROUND AND TOP LAYER EXTRACTION
 !                 CONTRIBUTION TO EVAPORATION FROM
 !                 THE SKIN AND TOP LAYER                       KG/M**2/S
@@ -134,6 +137,8 @@ USE YOMSURF_SSDP_MOD, ONLY : SSDP3D_ID, NSSDP3D
 !                                               use of parameter values defined in namelist
 !     I. Ayan-Miguez (BSC) July 2023         Add PSSDP3 object for spatially distributed parameters
 !     J. McNorton            24/08/2022      urban tile
+!     G. Balsamo    ECMWF    04-11-2025      Include irrigation
+!     G. Balsamo    ECMWF    10-02-2026      Runoff fixes over orography and frozen soils
 !     ------------------------------------------------------------------
 
 IMPLICIT NONE
@@ -156,6 +161,8 @@ REAL(KIND=JPRB),    INTENT(IN)   :: PEVAPTI(:,:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PWSAM1M(:,:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PTSAM1M(:,:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PCUR(:)
+REAL(KIND=JPRB),    INTENT(IN)   :: PIRFR(:)
+REAL(KIND=JPRB),    INTENT(IN)   :: PEVAPMU(:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PTSFC(:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PTSFL(:)
 REAL(KIND=JPRB),    INTENT(IN)   :: PMSN(:)
@@ -172,6 +179,7 @@ REAL(KIND=JPRB),    INTENT(INOUT):: PFWEL1(:)
 REAL(KIND=JPRB),    INTENT(INOUT):: PFWE234(:)
 
 REAL(KIND=JPRB),    INTENT(OUT)  :: PROS(:)
+REAL(KIND=JPRB),    INTENT(OUT)  :: PIRFL(:)
 REAL(KIND=JPRB),    INTENT(OUT)  :: PCFW(:,:)
 REAL(KIND=JPRB),    INTENT(OUT)  :: PRHSW(:,:)
 REAL(KIND=JPRB),    INTENT(OUT)  :: PSAWGFL(:,:)
@@ -196,7 +204,9 @@ REAL(KIND=JPRB) :: Z_RHOH20, ZD, &
  & ZDMAX, ZDMIN, ZALPHA, ZWFAC, ZLAM, ZMFAC, ZRMFAC, &
  & ZWCONS, ZKMD, &
  & ZRSFL, ZROEFF, ZSIGOR, ZBWS, ZB1, ZBM, ZWMAX, ZWMIN, &
- & ZCONW1, ZLYEPS, ZLYSIC, ZVOL, ZROS, ZSUM, ZLIMRS, ZWSATM, ZWRESTM, ZWFAC_S
+ & ZCONW1, ZLYEPS, ZLYSIC, ZVOL, ZROS, ZSUM, ZLIMRS, ZWSATM, ZWRESTM, ZWFAC_S, &
+ & ZWFLOOR, ZSEWP, ZKWPFLOOR, ZTOTAL_DEPTH, ZBEDROCKFAC
+REAL(KIND=JPRB), PARAMETER :: RZBEDROCK_MIN=1.0_JPRB ! floor for RDBEDROCK, see LEBEDROCKLIM below
 REAL(KIND=JPRD) :: ZDD, ZKD, ZSE, ZSEMAX, ZDMAX_D, ZSEMIN, ZDMIN_D, ZFMAX
 
 REAL(KIND=JPRB) :: ZFRK(KLEVS),ZWK(KLEVS),ZWMK(KLEVS)
@@ -224,6 +234,7 @@ ASSOCIATE(LESSRO=>YDSOIL%LESSRO, RDAW=>YDSOIL%RDAW, &
  & RVROOTSAL3D=>PSSDP3(:,:,SSDP3D_ID%NRVROOTSAL3D), RVROOTSAH3D=>PSSDP3(:,:,SSDP3D_ID%NRVROOTSAH3D), &
  & LEURBAN=>YDURB%LEURBAN, RURBALP=>YDURB%RURBALP, RURBCON=>YDURB%RURBCON,&
  & RURBLAM=>YDURB%RURBLAM, RURBSAT=>YDURB%RURBSAT, RURBSRES=>YDURB%RURBSRES, &
+ & LEIRRIGATION=>YDSOIL%LEIRRIGATION, &
  & RDMAXM3D=>PSSDP3(:,:,SSDP3D_ID%NRDMAXM3D), RDMINM3D=>PSSDP3(:,:,SSDP3D_ID%NRDMINM3D))
 
 ZEPSILON=100._JPRB*EPSILON(ZEPSILON)
@@ -255,6 +266,18 @@ ENDIF
 !*          2.1 Preliminary quantities related to root extraction
 !               Compute first liquid fraction of soil water to 
 !               be used later in stress functions.
+! ZF and ZLIQ are solved over the water-balance column 1:KLEVS_WB below, but both
+! are read over the full 1:KLEVS -- ZF by the DDH soil-ice diagnostic, ZLIQ by root
+! extraction at ZROOTW. Initialise the whole array with meaningful values first, so
+! that any merged layers below KLEVS_WB (KCWS>0) carry no frozen fraction and the
+! corresponding unfrozen liquid water content, rather than whatever was on the stack.
+DO JK=1,KLEVS
+  DO JL=KIDIA,KFDIA
+    ZF(JL,JK)=0.0_JPRB
+    ZLIQ(JL,JK)=MAX(RWPWPM3D(JL,JK),MIN(RWCAPM3D(JL,JK),PWSAM1M(JL,JK)))
+  ENDDO
+ENDDO
+
 DO JL=KIDIA,KFDIA
   DO JK=1,KLEVS_WB
     IF(PTSAM1M(JL,JK) < RTF1.AND.PTSAM1M(JL,JK) > RTF2) THEN
@@ -265,9 +288,14 @@ DO JL=KIDIA,KFDIA
       ZF(JL,JK)=0.0_JPRB
     ENDIF
   ENDDO
-  ZFMAX=SUM(ZF(JL,1:KLEVS_WB)*RDAW(1:KLEVS_WB))/SUM(RDAW(1:KLEVS_WB))
+  IF (YDSOIL%LEFROZENSOILFIX) THEN
+! Assume partial frozen soil is permeable via macropores (Mohammed et al. 2019 HESS)
+    ZFMAX=SUM(ZF(JL,1:KLEVS_WB)*RDAW(1:KLEVS_WB))/SUM(RDAW(1:KLEVS_WB))
+    DO JK=1,KLEVS_WB
+      ZF(JL,JK)=MIN(ZF(JL,JK),REAL(ZFMAX,JPRB))
+    ENDDO
+  ENDIF
   DO JK=1,KLEVS_WB
-    ZF(JL,JK)=MIN(ZF(JL,JK),ZFMAX) ! Assume partial frozen soil is permeable via macropores (Mohammed et al. 2019 HESS)
     ZLIQ(JL,JK)=MAX(RWPWPM3D(JL,JK),MIN(RWCAPM3D(JL,JK),PWSAM1M(JL,JK)*(1._JPRB-ZF(JL,JK))))
   ENDDO
 ENDDO
@@ -341,8 +369,36 @@ DO JL=KIDIA,KFDIA
 !    ENDIF
     ZMFAC = RMFACM3D(JL,1_JPIM)
     ZWCONS=RWCONSM3D(JL,1_JPIM)
-    ZDMAX=RDMAXM3D(JL,1_JPIM)
-    ZDMIN=RDMINM3D(JL,1_JPIM)
+    IF ( LEURBAN .AND. PCUR(JL) > 0.0_JPRB ) THEN
+! Blend in the urban Van Genuchten parameters (RURBALP/RURBCON/RURBLAM/
+! RURBSAT/RURBSRES), area-weighted by PCUR, matching the existing precedent
+! for RURBSAT in the VIC runoff capacity (ZWMK) below. ZMFAC has no urban
+! counterpart in the namelist so it is left as the natural-soil value,
+! consistent with the rest of this file.
+      ZWSATM=(1.0_JPRB-PCUR(JL))*ZWSATM+PCUR(JL)*RURBSAT
+      ZWRESTM=(1.0_JPRB-PCUR(JL))*ZWRESTM+PCUR(JL)*RURBSRES
+      ZALPHA=(1.0_JPRB-PCUR(JL))*ZALPHA+PCUR(JL)*RURBALP
+      ZLAM=(1.0_JPRB-PCUR(JL))*ZLAM+PCUR(JL)*RURBLAM
+      ZWCONS=(1.0_JPRB-PCUR(JL))*ZWCONS+PCUR(JL)*RURBCON
+      ZWFAC_S=SIGN(MAX(ABS(ZWSATM-ZWRESTM),ZEPSILON),(ZWSATM-ZWRESTM))
+      ZWMAX=.999_JPRB*ZWSATM
+      ZSEMAX=(ZWMAX-ZWRESTM)/ZWFAC_S
+      ZDMAX_D=(ZSEMAX**(ZLAM-(1._JPRB/ZMFAC))) &
+ &         *(((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(ZMFAC)) &
+ &         + ((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
+      ZWMIN=1.001_JPRB*ZWRESTM
+      ZSEMIN=(ZWMIN-ZWRESTM)/ZWFAC_S
+      ZDMIN_D=(ZSEMIN**(ZLAM-(1._JPRB/ZMFAC))) &
+ &         *(((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(ZMFAC)) &
+ &         + ((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
+      ZDMAX=(((1._JPRB-ZMFAC)*ZWCONS)/ &
+ &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMAX_D,JPRB)
+      ZDMIN=(((1._JPRB-ZMFAC)*ZWCONS)/ &
+ &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMIN_D,JPRB)
+    ELSE
+      ZDMAX=RDMAXM3D(JL,1_JPIM)
+      ZDMIN=RDMINM3D(JL,1_JPIM)
+    ENDIF
 !    ZWFAC_S=SIGN(MAX(ABS(ZWSATM-ZWRESTM),ZEPSILON),(ZWSATM-ZWRESTM))
 !    ZWMAX=.999_JPRB*ZWSATM
 !    ZSEMAX =(ZWMAX-ZWRESTM)/ZWFAC_S
@@ -362,7 +418,8 @@ DO JL=KIDIA,KFDIA
 !    ZDMIN= (((1._JPRB-ZMFAC)*ZWCONS)/ &
 ! &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMIN_D,JPRB)
  
-    ZW=MAX(MAX(PWSAM1M(JL,1),PWSAM1M(JL,2)),ZWRESTM)
+    ZW=MAX(MAX(PWSAM1M(JL,1),PWSAM1M(JL,2)),&
+     & MERGE(MAX(RWPWPM3D(JL,1_JPIM),ZWRESTM),ZWRESTM,YDSOIL%LEWPFLOOR))
     ZSE=(ZW-ZWRESTM)/(ZWSATM-ZWRESTM)
     ZWFAC=ZWSATM-ZWRESTM
     ZRMFAC=1./ZMFAC
@@ -387,10 +444,30 @@ DO JL=KIDIA,KFDIA
     IF (LLFREEZ) THEN
       ZFF=MIN(ZF(JL,1),ZF(JL,2))
       ZD=ZFF*ZDMIN+(1.0_JPRB-ZFF)*ZD
-! NOTE ZK = 0 for frozen soil
-      ZK=ZFF*0.0_JPRB+(1.0_JPRB-ZFF)*ZK
+! NOTE ZK = 0 for frozen soil, unless floored at the wilting-point
+! conductivity by LEFRZFLOOR (same rationale as LEWPFLOOR, see yos_soil.F90)
+      IF (YDSOIL%LEFRZFLOOR) THEN
+        ZSEWP=(MAX(RWPWPM3D(JL,1_JPIM),1.001_JPRB*ZWRESTM)-ZWRESTM)/(ZWSATM-ZWRESTM)
+        ZKWPFLOOR=ZWCONS*ZSEWP**ZLAM* &
+ &      (1.0_JPRB-((1.0_JPRB-(ZSEWP**ZRMFAC))**ZMFAC))**2.0_JPRB
+        ZK=MAX(ZFF*0.0_JPRB+(1.0_JPRB-ZFF)*ZK, ZKWPFLOOR)
+      ELSE
+        ZK=ZFF*0.0_JPRB+(1.0_JPRB-ZFF)*ZK
+      ENDIF
     ENDIF
 !
+
+    IF (LEIRRIGATION) THEN
+!         CALCULATE OPTIMAL IRRIGATION FLUX BASED ON DEMAND
+!          ---------------------------------------------------
+        PIRFL(JL)=MAX(0.0_JPRB, -1.0_JPRB*(PEVAPMU(JL)-PEVAPTI(JL,4)))
+        PIRFL(JL)=PIRFL(JL)*MAX(0.0_JPRB, PIRFR(JL)) !multiply by fraction of irrigation
+! further rules inspired by CLM https://doi.org/10.1029/2022MS003074
+! and ORCHIDEE https://egusphere.copernicus.org/preprints/2025/egusphere-2025-2491/egusphere-2025-2491.pdf
+    ELSE
+        PIRFL(JL)=0.0_JPRB
+    ENDIF
+
     IF (LESSRO) THEN
 
 !          SURFACE RUNOFF DUE TO VARIABLE INFILTRATION CAPACITY (VIC)
@@ -455,7 +532,11 @@ DO JL=KIDIA,KFDIA
       IF (LLFREEZ) THEN
         ZFF=ZF(JL,1)
         ZDSURF=ZFF*ZDMIN+(1.-ZFF)*ZDMAX
-        ZKSURF=ZFF*0.+(1.-ZFF)*ZWCONS
+        IF (YDSOIL%LEFRZFLOOR) THEN
+          ZKSURF=MAX(ZFF*0.+(1.-ZFF)*ZWCONS, ZKWPFLOOR)
+        ELSE
+          ZKSURF=ZFF*0.+(1.-ZFF)*ZWCONS
+        ENDIF
       ENDIF
       ZINFMAX=(ZDSURF*(ZWSATM-PWSAM1M(JL,1))/(0.5_JPRB*RDAW(1))+ZKSURF)*RHOH2O
       IF ( LEURBAN ) THEN
@@ -471,8 +552,8 @@ DO JL=KIDIA,KFDIA
       ZROT=ZROL+ZROC
     ENDIF
 
-!  Contribution of throughfall, melting, and runoff to the r.h.s.
-    ZWSFL=PTSFL(JL)+PMSN(JL)+PTSFC(JL)-ZROT
+!  Contribution of throughfall, melting, irrigation and runoff to the r.h.s.
+    ZWSFL=PTSFL(JL)+PMSN(JL)+PTSFC(JL)+PIRFL(JL)-ZROT
 
 !*             TILE CONTRIBUTIONS
 !              ------------------
@@ -526,6 +607,7 @@ DO JL=KIDIA,KFDIA
     PCFW(JL,1)=0.0_JPRB
     PRHSW(JL,1)=0.0_JPRB
     PROS(JL)=0.0_JPRB
+    PIRFL(JL)=0.0_JPRB
     PSAWGFL(JL,1)=0.0_JPRB
     ZSAWEXT(JL,1)=0.0_JPRB
   ENDIF
@@ -552,39 +634,47 @@ DO JK=2,KLEVS_WB
 !      ENDIF
       ZMFAC = RMFACM3D(JL,JK)
       ZWCONS=RWCONSM3D(JL,JK)
-!      ZWFAC_S=SIGN(MAX(ABS(ZWSATM-ZWRESTM),ZEPSILON),(ZWSATM-ZWRESTM))
-!      ZWMAX=.999_JPRB*ZWSATM  
-!      ZSEMAX =(ZWMAX-ZWRESTM)/ZWFAC_S  
-!      ZDMAX_D=(ZSEMAX**(ZLAM-(1._JPRB/ZMFAC))) &
-! &         *(((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(ZMFAC)) &
-! &         + ((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
-!      ZWMIN=1.001_JPRB*ZWRESTM   
-!      ZSEMIN=(ZWMIN-ZWRESTM)/ZWFAC_S 
-!      ZDMIN_D= (ZSEMIN**(ZLAM-(1._JPRB/ZMFAC))) &
-! &         *(((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(ZMFAC)) &
-! &         + ((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
- 
-!      ZDMAX= (((1._JPRB-ZMFAC)*ZWCONS)/ &
-! &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMAX_D,JPRB)
-
-!      ZDMIN= (((1._JPRB-ZMFAC)*ZWCONS)/ &
-! &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMIN_D,JPRB)
-      ZDMAX=RDMAXM3D(JL,JK)
-      ZDMIN=RDMINM3D(JL,JK) 
+      IF ( LEURBAN .AND. PCUR(JL) > 0.0_JPRB ) THEN
+! Same urban Van Genuchten blend as the top-layer (JK=1) section above --
+! replaces the old ad-hoc "Test value for Urban" hack further below, which
+! only touched the ZW<=ZWRESTM branch's ZD with a hardcoded 1.e-4 constant
+! instead of the calibrated RURBCON/RURBALP/RURBLAM/RURBSRES parameters.
+        ZWSATM=(1.0_JPRB-PCUR(JL))*ZWSATM+PCUR(JL)*RURBSAT
+        ZWRESTM=(1.0_JPRB-PCUR(JL))*ZWRESTM+PCUR(JL)*RURBSRES
+        ZALPHA=(1.0_JPRB-PCUR(JL))*ZALPHA+PCUR(JL)*RURBALP
+        ZLAM=(1.0_JPRB-PCUR(JL))*ZLAM+PCUR(JL)*RURBLAM
+        ZWCONS=(1.0_JPRB-PCUR(JL))*ZWCONS+PCUR(JL)*RURBCON
+        ZWFAC_S=SIGN(MAX(ABS(ZWSATM-ZWRESTM),ZEPSILON),(ZWSATM-ZWRESTM))
+        ZWMAX=.999_JPRB*ZWSATM
+        ZSEMAX=(ZWMAX-ZWRESTM)/ZWFAC_S
+        ZDMAX_D=(ZSEMAX**(ZLAM-(1._JPRB/ZMFAC))) &
+ &         *(((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(ZMFAC)) &
+ &         + ((1._JPRB-(ZSEMAX**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
+        ZWMIN=1.001_JPRB*ZWRESTM
+        ZSEMIN=(ZWMIN-ZWRESTM)/ZWFAC_S
+        ZDMIN_D=(ZSEMIN**(ZLAM-(1._JPRB/ZMFAC))) &
+ &         *(((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(ZMFAC)) &
+ &         + ((1._JPRB-(ZSEMIN**(1._JPRB/ZMFAC)))**(-ZMFAC))-2._JPRB)
+        ZDMAX=(((1._JPRB-ZMFAC)*ZWCONS)/ &
+ &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMAX_D,JPRB)
+        ZDMIN=(((1._JPRB-ZMFAC)*ZWCONS)/ &
+ &        (ZALPHA*ZMFAC*ZWFAC_S)) * REAL(ZDMIN_D,JPRB)
+      ELSE
+        ZDMAX=RDMAXM3D(JL,JK)
+        ZDMIN=RDMINM3D(JL,JK)
+      ENDIF
+      ZWFLOOR=MERGE(MAX(RWPWPM3D(JL,JK),ZWRESTM),ZWRESTM,YDSOIL%LEWPFLOOR)
       IF (JK < KLEVS_WB) THEN
-        ZW=MAX(MAX(PWSAM1M(JL,JK),PWSAM1M(JL,JK+1)),ZWRESTM)
+        ZW=MAX(MAX(PWSAM1M(JL,JK),PWSAM1M(JL,JK+1)),ZWFLOOR)
         ZW = MIN(ZW, ZWSATM)
       ELSE
-        ZW=MAX(PWSAM1M(JL,JK),ZWRESTM)
+        ZW=MAX(PWSAM1M(JL,JK),ZWFLOOR)
       ENDIF
       ZSE=(ZW-ZWRESTM)/(ZWSATM-ZWRESTM)
       ZWFAC=ZWSATM-ZWRESTM
       ZRMFAC=1./ZMFAC
       IF (ZW.LE.(1.001*ZWRESTM)) THEN
       ZD=ZDMIN
-      IF ( LEURBAN ) THEN
-       ZD=ZDMIN    * (1.0_JPRB-PCUR(JL))  + (PCUR(JL)*1.e-4_JPRD) !Test value for Urban
-      ENDIF
         ZK=0.0_JPRB
       ELSEIF ((ZW.GT.(1.001_JPRB*ZWRESTM)).AND.(ZW.LE.(0.999_JPRB*ZWSATM))) THEN
         ZKD=ZWCONS*ZSE**ZLAM* &
@@ -602,7 +692,7 @@ DO JK=2,KLEVS_WB
         ZD=ZDMAX
       ENDIF
 
-      ZWM=MAX(MAX(PWSAM1M(JL,JK-1),PWSAM1M(JL,JK)),ZWRESTM)
+      ZWM=MAX(MAX(PWSAM1M(JL,JK-1),PWSAM1M(JL,JK)),ZWFLOOR)
       ZWM = MIN(ZWM, ZWSATM)
       ZSE=(ZWM-ZWRESTM)/(ZWSATM-ZWRESTM)
       IF (ZWM.LE.ZWRESTM) THEN
@@ -614,7 +704,26 @@ DO JK=2,KLEVS_WB
         ZKM=ZWCONS
       ENDIF
           
-      IF (JK == KLEVS_WB) ZD=0.0_JPRB 
+      IF (JK == KLEVS_WB) ZD=0.0_JPRB
+
+! Prototype: taper this layer's downward conductivity towards zero once
+! its own cumulative depth reaches the real depth to bedrock, instead of
+! draining freely into rock the model doesn't represent. See
+! LEBEDROCKLIM/RDBEDROCK in yos_soil.F90. Evaluated per-layer (not just at
+! the bottom one) so a shallow RDBEDROCK that cuts through an intermediate
+! layer tapers that layer's outflow directly, rather than being
+! indistinguishable from "just past the bottom layer's own start depth".
+! Layers entirely above bedrock get factor 1 (no effect). RDBEDROCK is
+! floored at 1m (RZBEDROCK_MIN) before use: below that, treat the reading
+! as unreliable (e.g. a noisy BDTICM pixel) rather than let a single bad
+! value fully shut off drainage -- 1m still leaves the top 1-2 layers of
+! every discretization tested (4/9/10/14) free-draining regardless.
+      IF (YDSOIL%LEBEDROCKLIM) THEN
+        ZTOTAL_DEPTH=SUM(RDAW(1:JK))
+        ZBEDROCKFAC=MAX(0.0_JPRB,MIN(1.0_JPRB, &
+         & (MAX(YDSOIL%RDBEDROCK,RZBEDROCK_MIN)-ZTOTAL_DEPTH+RDAW(JK))/RDAW(JK)))
+        ZK=ZK*ZBEDROCKFAC
+      ENDIF
 
       IF (LLFREEZ) THEN
         IF (JK < KLEVS_WB) THEN
@@ -624,8 +733,16 @@ DO JK=2,KLEVS_WB
           ZFF=ZF(JL,JK)
         ENDIF
         ZFFM=MIN(ZF(JL,JK-1),ZF(JL,JK))
-        ZK=ZFF*0.0_JPRB+(1.0_JPRB-ZFF)*ZK
-        ZKM=ZFFM*0.0_JPRB+(1.0_JPRB-ZFFM)*ZKM
+        IF (YDSOIL%LEFRZFLOOR) THEN
+          ZSEWP=(MAX(RWPWPM3D(JL,JK),1.001_JPRB*ZWRESTM)-ZWRESTM)/(ZWSATM-ZWRESTM)
+          ZKWPFLOOR=ZWCONS*ZSEWP**ZLAM* &
+ &        (1.0_JPRB-((1.0_JPRB-(ZSEWP**ZRMFAC))**ZMFAC))**2.0_JPRB
+          ZK=MAX(ZFF*0.0_JPRB+(1.0_JPRB-ZFF)*ZK, ZKWPFLOOR)
+          ZKM=MAX(ZFFM*0.0_JPRB+(1.0_JPRB-ZFFM)*ZKM, ZKWPFLOOR)
+        ELSE
+          ZK=ZFF*0.0_JPRB+(1.0_JPRB-ZFF)*ZK
+          ZKM=ZFFM*0.0_JPRB+(1.0_JPRB-ZFFM)*ZKM
+        ENDIF
       ENDIF
 
 !*             TILE CONTRIBUTIONS
