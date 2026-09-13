@@ -1,6 +1,7 @@
 SUBROUTINE SUGP1S(NCID)
 USE PARKIND1  ,ONLY : JPIM     ,JPRB,  JPRD
 USE YOMHOOK   ,ONLY : LHOOK    ,DR_HOOK, JPHOOK
+USE YOS_FIRE_DIAG_MOD, ONLY : FIRE_DIAG_ENSURE_ALLOC
 
 USE YOMGP1S0 , ONLY : GP0      ,TSLNU0   ,QLINU0   ,TILNU0   ,&
                       &FSNNU0   ,TSNNU0   ,ASNNU0   ,RSNNU0   ,WSNNU0,&
@@ -149,6 +150,12 @@ IF (LHOOK) CALL DR_HOOK('SUGP1S',0,ZHOOK_HANDLE)
 
 KULOUT=NULOUT
 ALLOCATE (GP0(NPROMA,NGPP,NBLOCKS))
+
+! LEFIRE: allocate the LFMC diagnostic buffer here (model setup, once) rather
+! than lazily on first use inside the timestep loop -- the very first output
+! write can happen before that first physics call, and PACK_BUFFER on a
+! still-unallocated array segfaults.
+CALL FIRE_DIAG_ENSURE_ALLOC(NPROMA,NBLOCKS)
 MTSLNU=1
 MQLINU=MTSLNU+NCSS
 MTILNU=MQLINU+NCSS

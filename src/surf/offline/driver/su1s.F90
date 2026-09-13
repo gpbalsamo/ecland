@@ -5,7 +5,7 @@ USE YOMLOG1S , ONLY : LDBGS1   ,LACCUMW , LSEMISS , CFFORC &
                      &,CMODID   ,CVERID  , LRESET  , NACCUR &
                      &,NDIMCDF  &
                      &,LWREFL   ,LWRWAT  , LWRSUS  , LWRSUB &
-                     &,LWREVA   ,LWRCLD  , LWRGG   , LWRCLM &
+                     &,LWREVA   ,LWRCLD  , LWRGG   , LWRFIRE , LWRCLM &
 		             &,LWRLKE   ,LWROCP  , LWROCD  , LWROCR &
                      &,LOFFL    ,CFOUT    ,CFSURF  , CFINIT &
                      &,LWRCO2,LWRVEG,LWRFRA,LWRFOR,LWRBIO,LWRTIL,LWRVTY,CSITE &
@@ -102,6 +102,7 @@ LWRSUB=.FALSE. !.TRUE.
 LWREVA=.TRUE.
 LWRCLD=.TRUE.
 LWRGG=.TRUE.
+LWRFIRE=.FALSE. ! o_fire.nc: LEFIRE fuel-moisture/fuel-load reservoirs, off by default
 LWRCLM=.TRUE.
 LOFFL=.TRUE.
 LWRLKE=.FALSE.

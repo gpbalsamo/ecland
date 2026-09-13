@@ -210,6 +210,12 @@ SELECT CASE(CNAME)
   CASE('PPR')
     CLNAME='previous-rainfall flag'
     CUNITS='-'
+  CASE('LFMC_L')
+    CLNAME='live fuel moisture content, low vegetation'
+    CUNITS='%'
+  CASE('LFMC_H')
+    CLNAME='live fuel moisture content, high vegetation'
+    CUNITS='%'
   CASE('SWE')
     CLNAME='snow water equivalent'
     CUNITS='kg m-2'
