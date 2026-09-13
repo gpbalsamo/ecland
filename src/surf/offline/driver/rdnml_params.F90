@@ -338,6 +338,10 @@ CONTAINS
 !   .FALSE. (plain baseline ecLand) so an experiment that never mentions it
 !   is unaffected.
     LOGICAL :: LEFROZENSOILFIX = .FALSE.
+!   Fuel-moisture/fuel-load reservoir chain (ported from IFS-source's sparky
+!   fire-danger prototype) -- see yos_soil.F90. Defaults to .FALSE. (plain
+!   baseline ecLand) so an experiment that never mentions it is unaffected.
+    LOGICAL :: LEFIRE = .FALSE.
 
     REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
@@ -399,6 +403,7 @@ CONTAINS
     TMP_SURF%LEGWRECHARGE  = LEGWRECHARGE
     TMP_SURF%RWTDRECHARGE  = RWTDRECHARGE
     TMP_SURF%LEFROZENSOILFIX = LEFROZENSOILFIX
+    TMP_SURF%LEFIRE          = LEFIRE
 
     !     ------------------------------------------------------------------
     !*         3.     PRINT FINAL VALUES
@@ -442,6 +447,7 @@ CONTAINS
     WRITE(NULOUT,*) '   LEGWRECHARGE   = ', LEGWRECHARGE
     WRITE(NULOUT,*) '   RWTDRECHARGE   = ', RWTDRECHARGE
     WRITE(NULOUT,*) '   LEFROZENSOILFIX = ', LEFROZENSOILFIX
+    WRITE(NULOUT,*) '   LEFIRE          = ', LEFIRE
 
 
     IF (LHOOK) CALL DR_HOOK('RDNML_SOIL',1,ZHOOK_HANDLE)

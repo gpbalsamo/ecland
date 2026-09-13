@@ -95,6 +95,7 @@ NVS0=3		! soil water, soil temp, ice temp
 NVS1=1            ! liquid soil water
 NVSG=4*NCSNEC+1		! (snow depth, temp, water,density)*NCSNEC + alb
 NVRS=3		! skin temp, skin depth, water-table depth (LEGWRECHARGE)
+NVRS=NVRS+9	! LEFIRE: DFMC 1h/10h/100h/1000h, LLFL, LWFL, DFFL, DWFL, previous-rainfall flag
 NVLA=7          ! lake prognostic variable ! ENDUTRA 
 NVEG=3          ! lai, Biomstr, Biomstr2
 

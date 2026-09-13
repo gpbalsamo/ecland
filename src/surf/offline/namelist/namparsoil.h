@@ -26,5 +26,9 @@ NAMELIST/NAMPARSOIL/&
 & , RWTDRECHARGE&
 ! * frozen-soil macropore-permeability cap -- see yos_soil.F90. Defaults to
 !   .FALSE. below (RDNML_SOIL), i.e. unset means plain baseline ecLand.
-& , LEFROZENSOILFIX
+& , LEFROZENSOILFIX&
+! * fuel-moisture/fuel-load reservoir chain (ported from IFS-source's sparky
+!   fire-danger prototype) -- see yos_soil.F90. Defaults to .FALSE. below
+!   (RDNML_SOIL), i.e. unset means plain baseline ecLand.
+& , LEFIRE
 !     ------------------------------------------------------------------

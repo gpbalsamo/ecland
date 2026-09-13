@@ -53,6 +53,15 @@ REAL(KIND=JPRB),POINTER:: RSNNUA(:,:)
 REAL(KIND=JPRB),POINTER:: TRENUA(:)
 REAL(KIND=JPRB),POINTER:: WRENUA(:)
 REAL(KIND=JPRB),POINTER:: WTDNUA(:) ! water-table depth (LEGWRECHARGE)
+REAL(KIND=JPRB),POINTER:: DFMC1NUA(:)    ! LEFIRE: dead fuel moisture, 1h class
+REAL(KIND=JPRB),POINTER:: DFMC10NUA(:)   ! LEFIRE: dead fuel moisture, 10h class
+REAL(KIND=JPRB),POINTER:: DFMC100NUA(:)  ! LEFIRE: dead fuel moisture, 100h class
+REAL(KIND=JPRB),POINTER:: DFMC1000NUA(:) ! LEFIRE: dead fuel moisture, 1000h class
+REAL(KIND=JPRB),POINTER:: LLFLNUA(:)     ! LEFIRE: live leaf fuel load
+REAL(KIND=JPRB),POINTER:: LWFLNUA(:)     ! LEFIRE: live wood fuel load
+REAL(KIND=JPRB),POINTER:: DFFLNUA(:)     ! LEFIRE: dead foliage fuel load
+REAL(KIND=JPRB),POINTER:: DWFLNUA(:)     ! LEFIRE: dead wood fuel load
+REAL(KIND=JPRB),POINTER:: PPRNUA(:)      ! LEFIRE: previous-rainfall flag
 REAL(KIND=JPRB),POINTER:: QLQNUA(:,:)
 
 REAL(KIND=JPRB),POINTER:: TLICENUA(:)

@@ -16,11 +16,13 @@ list( APPEND module_src
     cotwo_mod.F90
     cotworestress_mod.F90
     cptave_mod.F90
+    dfmc_mod.F90
     farquhar_mod.F90
     fcz0wn_mod.F90
     flake_driver_mod.F90
     flakeene_mod.F90
     flakerad_mod.F90
+    fuel_mod.F90
     kpp_abk80_mod.F90
     kpp_bldepth_mod.F90
     kpp_blmix_mod.F90
@@ -33,6 +35,7 @@ list( APPEND module_src
     kpp_tridmat_mod.F90
     kpp_tridrhs_mod.F90
     kpp_wscale_mod.F90
+    lfmc_mod.F90
     nitro_decline_mod.F90
     oc_mlm_mod.F90
     ocean_ml_driver_mod.F90
@@ -172,6 +175,7 @@ list( APPEND module_src
     yos_dim.F90
     yos_exc.F90
     yos_excs.F90
+    yos_fire_diag_mod.F90
     yos_flake.F90
     yos_lw.F90
     yos_mlm.F90

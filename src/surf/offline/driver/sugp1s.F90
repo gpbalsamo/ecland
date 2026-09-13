@@ -5,34 +5,42 @@ USE YOMHOOK   ,ONLY : LHOOK    ,DR_HOOK, JPHOOK
 USE YOMGP1S0 , ONLY : GP0      ,TSLNU0   ,QLINU0   ,TILNU0   ,&
                       &FSNNU0   ,TSNNU0   ,ASNNU0   ,RSNNU0   ,WSNNU0,&
                       &TRENU0   ,WRENU0   ,WTDNU0,&
+                      &DFMC1NU0 ,DFMC10NU0,DFMC100NU0,DFMC1000NU0,&
+                      &LLFLNU0  ,LWFLNU0  ,DFFLNU0  ,DWFLNU0  ,PPRNU0,&
                       &TLICENU0,TLMNWNU0,TLWMLNU0,TLBOTNU0,TLSFNU0,&
-                      &HLICENU0,HLMLNU0,&                            
-                      &UONU0   ,VONU0     ,TONU0    ,SONU0,&           
-                      &LAINU0, BSTRNU0, BSTR2NU0            
+                      &HLICENU0,HLMLNU0,&
+                      &UONU0   ,VONU0     ,TONU0    ,SONU0,&
+                      &LAINU0, BSTRNU0, BSTR2NU0
 
 USE YOMGP1SA , ONLY : GPA      ,TSLNUA   ,QLINUA   ,TILNUA   ,&
                       &FSNNUA   ,TSNNUA   ,ASNNUA   ,RSNNUA   ,WSNNUA,&
                       &TRENUA   ,WRENUA   ,WTDNUA   ,QLQNUA,&
-                      &TLICENUA,TLMNWNUA,TLWMLNUA,TLBOTNUA,TLSFNUA,& 
-                      &HLICENUA,HLMLNUA,&                            
-                      &UONUA   ,VONUA     ,TONUA    ,SONUA ,&          
-                      &LAINUA , BSTRNUA, BSTR2NUA             
+                      &DFMC1NUA ,DFMC10NUA,DFMC100NUA,DFMC1000NUA,&
+                      &LLFLNUA  ,LWFLNUA  ,DFFLNUA  ,DWFLNUA  ,PPRNUA,&
+                      &TLICENUA,TLMNWNUA,TLWMLNUA,TLBOTNUA,TLSFNUA,&
+                      &HLICENUA,HLMLNUA,&
+                      &UONUA   ,VONUA     ,TONUA    ,SONUA ,&
+                      &LAINUA , BSTRNUA, BSTR2NUA
 
 USE YOMGP1S1 , ONLY : GP1      ,TSLNU1   ,QLINU1   ,TILNU1   ,&
                       &FSNNU1   ,TSNNU1   ,ASNNU1   ,RSNNU1   ,&
                       &TRENU1   ,WRENU1   ,WTDNU1,&
-                      &TLICENU1,TLMNWNU1,TLWMLNU1,TLBOTNU1,TLSFNU1,WSNNU1,& 
-                      &HLICENU1,HLMLNU1,&                            
-                      &UONU1   ,VONU1     ,TONU1    ,SONU1,&         
-                      &LAINU1, BSTRNU1, BSTR2NU1                     
+                      &DFMC1NU1 ,DFMC10NU1,DFMC100NU1,DFMC1000NU1,&
+                      &LLFLNU1  ,LWFLNU1  ,DFFLNU1  ,DWFLNU1  ,PPRNU1,&
+                      &TLICENU1,TLMNWNU1,TLWMLNU1,TLBOTNU1,TLSFNU1,WSNNU1,&
+                      &HLICENU1,HLMLNU1,&
+                      &UONU1   ,VONU1     ,TONU1    ,SONU1,&
+                      &LAINU1, BSTRNU1, BSTR2NU1
 
 USE PTRGP1S  , ONLY : MTSLNU   ,MQLINU   ,MTILNU   ,MFSNNU   ,&
                       &MTSNNU   ,MASNNU   ,MRSNNU   ,MWSNNU,&
                       &MTRENU   ,MWRENU   ,MWTDNU   ,MQLQNU, &
-                      &MTLICENU,MTLMNWNU,MTLWMLNU,MTLBOTNU,MTLSFNU,& 
-                      &MHLICENU,MHLMLNU,&                            
-                      &MUONU   ,MVONU     ,MTONU    ,MSONU,&         
-                      &MLAINU , MBSTRNU, MBSTR2NU 
+                      &MDFMC1NU ,MDFMC10NU,MDFMC100NU,MDFMC1000NU,&
+                      &MLLFLNU  ,MLWFLNU  ,MDFFLNU  ,MDWFLNU  ,MPPRNU,&
+                      &MTLICENU,MTLMNWNU,MTLWMLNU,MTLBOTNU,MTLSFNU,&
+                      &MHLICENU,MHLMLNU,&
+                      &MUONU   ,MVONU     ,MTONU    ,MSONU,&
+                      &MLAINU , MBSTRNU, MBSTR2NU
 
 USE YOMLUN1S , ONLY : NULNAM   ,NULGP0, NULOUT
 USE YOMLOG1S , ONLY : CFINIT
@@ -152,7 +160,16 @@ MASNNU=MRSNNU+NCSNEC
 MTRENU=MASNNU+1
 MWRENU=MTRENU+1
 MWTDNU=MWRENU+1
-MUONU=MWTDNU+1
+MDFMC1NU=MWTDNU+1
+MDFMC10NU=MDFMC1NU+1
+MDFMC100NU=MDFMC10NU+1
+MDFMC1000NU=MDFMC100NU+1
+MLLFLNU=MDFMC1000NU+1
+MLWFLNU=MLLFLNU+1
+MDFFLNU=MLWFLNU+1
+MDWFLNU=MDFFLNU+1
+MPPRNU=MDWFLNU+1
+MUONU=MPPRNU+1
 MVONU=MUONU+(NCOM+1)            
 MTONU=MVONU+(NCOM+1)            
 MSONU=MTONU+(NCOM+1)            
@@ -191,6 +208,15 @@ ASNNU0 => GP0(:,MASNNU,:)
 TRENU0 => GP0(:,MTRENU,:)
 WRENU0 => GP0(:,MWRENU,:)
 WTDNU0 => GP0(:,MWTDNU,:)
+DFMC1NU0 => GP0(:,MDFMC1NU,:)
+DFMC10NU0 => GP0(:,MDFMC10NU,:)
+DFMC100NU0 => GP0(:,MDFMC100NU,:)
+DFMC1000NU0 => GP0(:,MDFMC1000NU,:)
+LLFLNU0 => GP0(:,MLLFLNU,:)
+LWFLNU0 => GP0(:,MLWFLNU,:)
+DFFLNU0 => GP0(:,MDFFLNU,:)
+DWFLNU0 => GP0(:,MDWFLNU,:)
+PPRNU0 => GP0(:,MPPRNU,:)
 
 UONU0 => GP0(:,MUONU:MUONU+(NCOM+1)-1,:)   !KPP
 VONU0 => GP0(:,MVONU:MVONU+(NCOM+1)-1,:)   !KPP
@@ -223,6 +249,15 @@ ASNNU1 => GP1(:,MASNNU,:)
 TRENU1 => GP1(:,MTRENU,:)
 WRENU1 => GP1(:,MWRENU,:)
 WTDNU1 => GP1(:,MWTDNU,:)
+DFMC1NU1 => GP1(:,MDFMC1NU,:)
+DFMC10NU1 => GP1(:,MDFMC10NU,:)
+DFMC100NU1 => GP1(:,MDFMC100NU,:)
+DFMC1000NU1 => GP1(:,MDFMC1000NU,:)
+LLFLNU1 => GP1(:,MLLFLNU,:)
+LWFLNU1 => GP1(:,MLWFLNU,:)
+DFFLNU1 => GP1(:,MDFFLNU,:)
+DWFLNU1 => GP1(:,MDWFLNU,:)
+PPRNU1 => GP1(:,MPPRNU,:)
 
 UONU1 => GP1(:,MUONU:MUONU+(NCOM+1)-1,:)   !KPP
 VONU1 => GP1(:,MVONU:MVONU+(NCOM+1)-1,:)   !KPP
@@ -268,6 +303,15 @@ ASNNUA => GPA(:,MASNNU)
 TRENUA => GPA(:,MTRENU)
 WRENUA => GPA(:,MWRENU)
 WTDNUA => GPA(:,MWTDNU)
+DFMC1NUA => GPA(:,MDFMC1NU)
+DFMC10NUA => GPA(:,MDFMC10NU)
+DFMC100NUA => GPA(:,MDFMC100NU)
+DFMC1000NUA => GPA(:,MDFMC1000NU)
+LLFLNUA => GPA(:,MLLFLNU)
+LWFLNUA => GPA(:,MLWFLNU)
+DFFLNUA => GPA(:,MDFFLNU)
+DWFLNUA => GPA(:,MDWFLNU)
+PPRNUA => GPA(:,MPPRNU)
 QLQNUA => GPA(:,MQLQNU:MQLQNU+NCSS-1)
 
 UONUA => GPA(:,MUONU:MUONU+(NCOM+1)-1)   !KPP

@@ -70,7 +70,7 @@ INTEGER(KIND=JPIM) :: VARID,IDIMID2(2),IDIM2,IDIMID3(3),IDIM3
 TYPE(TYPE_NCDF_VAR)          :: YD_VARINFO
 TYPE(TYPE_NCDF_DIMSID)       :: YD_DIMSID
 INTEGER(KIND=JPIM)           :: NVARS2D,NVARS3D,IVAR
-CHARACTER(LEN=20)            :: CVARS2D(40),CVARS3D(40)
+CHARACTER(LEN=20)            :: CVARS2D(50),CVARS3D(40)
 INTEGER(KIND=JPIM)           :: MYPROC, NPROC
 REAL(KIND=JPHOOK)              :: ZHOOK_HANDLE
 
@@ -112,6 +112,10 @@ ENDIF
                        'TLMNW      ','TLWML      ','TLBOT      ','TLSF       ','HLICE      ',&
                        'HLML       ','LDEPTH     ','LDEPTHF    ','CLAKE      ','x          ','CLAKEF     ',&
                        'cu         ','ISOP_EP    ','irrfrc     ','WTD        '/)
+
+  NVARS2D=NVARS2D+9
+  CVARS2D(NVARS2D-8:NVARS2D)=(/'DFMC_1     ','DFMC_10    ','DFMC_100   ','DFMC_1000  ',&
+                               'LLFL       ','LWFL       ','DFFL       ','DWFL       ','PPR        '/)
 
   IF (LEC4MAP) THEN
 

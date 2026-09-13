@@ -183,6 +183,33 @@ SELECT CASE(CNAME)
   CASE('WTD')
     CLNAME='water table depth'
     CUNITS='m'
+  CASE('DFMC_1')
+    CLNAME='dead fuel moisture content, 1h class'
+    CUNITS='-'
+  CASE('DFMC_10')
+    CLNAME='dead fuel moisture content, 10h class'
+    CUNITS='-'
+  CASE('DFMC_100')
+    CLNAME='dead fuel moisture content, 100h class'
+    CUNITS='-'
+  CASE('DFMC_1000')
+    CLNAME='dead fuel moisture content, 1000h class'
+    CUNITS='-'
+  CASE('LLFL')
+    CLNAME='live leaf fuel load'
+    CUNITS='kg m-2'
+  CASE('LWFL')
+    CLNAME='live wood fuel load'
+    CUNITS='kg m-2'
+  CASE('DFFL')
+    CLNAME='dead foliage fuel load'
+    CUNITS='kg m-2'
+  CASE('DWFL')
+    CLNAME='dead wood fuel load'
+    CUNITS='kg m-2'
+  CASE('PPR')
+    CLNAME='previous-rainfall flag'
+    CUNITS='-'
   CASE('SWE')
     CLNAME='snow water equivalent'
     CUNITS='kg m-2'

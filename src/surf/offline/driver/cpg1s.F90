@@ -23,7 +23,9 @@ USE YOMGPD1S ,  ONLY : VFSST, VFALUVI, VFALUVV, VFALUVG,&
 USE YOMGF1S  ,  ONLY : PNLP0, PNLP1, RALT
 USE YOMGP1S0 ,  ONLY : GP0, TONU0, RSNNU0, TSNNU0, FSNNU0, WSNNU0, LAINU0
 USE YOMGP1S1 ,  ONLY : GP1, LAINU1
-USE PTRGP1S  ,  ONLY : MFSNNU, MRSNNU, MTSNNU, MWSNNU
+USE PTRGP1S  ,  ONLY : MFSNNU, MRSNNU, MTSNNU, MWSNNU, &
+                     &  MDFMC1NU, MDFMC10NU, MDFMC100NU, MDFMC1000NU, &
+                     &  MLLFLNU, MLWFLNU, MDFFLNU, MDWFLNU, MPPRNU
 USE YOMLOG1S,   ONLY : IDBGS1
 USE YOMCT01S ,  ONLY : NSTART
 USE YOMCST   ,  ONLY : RG
@@ -47,6 +49,11 @@ USE ECLAND_GEMS_TYPE_MOD,       ONLY: GEMS_LOCAL_TYPE
 USE ECLAND_INTERNAL_TYPE_MOD,   ONLY: INTERNAL_TYPE
 USE ECLAND_SURFACE_TYPE_MOD,    ONLY: SURF_AND_MORE_TYPE
 USE ECLAND_SURF_LOCAL_TYPE_MOD, ONLY: SURF_AND_MORE_LOCAL_TYPE
+
+USE LFMC_MOD, ONLY: LFMC
+USE DFMC_MOD, ONLY: DFMC
+USE FUEL_MOD, ONLY: FUEL
+USE YOS_FIRE_DIAG_MOD, ONLY: ZLFMCL, ZLFMCH, FIRE_DIAG_ENSURE_ALLOC
 
 USE OMP_LIB, ONLY: OMP_GET_MAX_THREADS
 
@@ -239,6 +246,49 @@ DO IST = 1, NPOI, NPROMA
    & PPSURF=PNLP1, &
    & PSURF=ZSURF, PSURFL=PSURFL, PCLIM=PCLIM, PAUX=PAUX, PAUXL=PAUXL, PFLUX=PFLUX, &
    & PDIAG=PDIAG, STATE=STATE, GEMSL=GEMSL, PDDHS=PDDHS)
+
+!* LEFIRE >
+!     Fuel-moisture/fuel-load reservoir chain (ported from IFS-source's sparky
+!     fire-danger prototype). Standalone: reads soil moisture, veg cover/type/
+!     LAI, 2m T/Td, skin T, surface pressure, rainfall and ecLand's own
+!     CTESSEL net CO2 flux, all already computed above; does not feed back
+!     into the main soil/snow solve. See yos_soil.F90 for what is and is not
+!     ported from sparky, and why.
+!     ------------------------------------------------------------------
+  IF (YSURF%YSOIL%LEFIRE) THEN
+    CALL FIRE_DIAG_ENSURE_ALLOC(NPROMA,NBLOCKS)
+    CALL LFMC(KIDIA=1, KFDIA=KFDIA, LDLAND=LLKEYS%LLLAND, &
+     & KTVL=ZSURF%ITVL, KTVH=ZSURF%ITVH, PLAIL=PSURFL%ZLAIL, PLAIH=PSURFL%ZLAIH, &
+     & PSSM=ZSURF%GSP%PWSA, PLFMC_L=ZLFMCL(:,IBL), PLFMC_H=ZLFMCH(:,IBL))
+    CALL DFMC(KIDIA=1, KFDIA=KFDIA, PTSTEP=TDT, LDLAND=LLKEYS%LLLAND, &
+     & PT2M=ZSURF%GSD%PT2M, PD2M=ZSURF%GSD%PD2M, &
+     & PPRE=PFLUX%PFPLSL(1:KFDIA)+PFLUX%PFPLCL(1:KFDIA), PTSK=ZSURF%GSP%PTL, PPSU=PAUXL%ZPAPSRF, &
+     & PPPR=PSURFL%PPPRL, &
+     & PDFMC_1=PSURFL%PDFMC1L, PDFMC_10=PSURFL%PDFMC10L, &
+     & PDFMC_100=PSURFL%PDFMC100L, PDFMC_1000=PSURFL%PDFMC1000L)
+    CALL FUEL(KIDIA=1, KFDIA=KFDIA, PTSTEP=TDT, &
+     & KTVL=ZSURF%ITVL, KTVH=ZSURF%ITVH, PLAIL=PSURFL%ZLAIL, PLAIH=PSURFL%ZLAIH, &
+     & PCVL=ZSURF%ZCVL, PCVH=ZSURF%ZCVH, PNEE=ZSURF%PCO2FLUX, &
+     & PLLFL=PSURFL%PLLFLL, PLWFL=PSURFL%PLWFLL, PDFFL=PSURFL%PDFFLL, PDWFL=PSURFL%PDWFLL)
+!   LFMC/DFMC/FUEL update the GP0-backed "L" (previous-timestep) accessors in
+!   place; cpg1s's own end-of-step GP0(...)=GP1(...) commit (below) would
+!   otherwise discard that update by copying GP1's untouched snapshot back
+!   over it. Mirror it directly onto the matching GP1 slots so it survives
+!   into the next timestep -- writing GP1 directly rather than through the
+!   ZGPE/"E1" FIELD_2RB stack other prognostics use (e.g. PWTDE1/PWTD),
+!   since that stack's own invariants are not established well enough here
+!   to trust it (an earlier attempt crashed with a floating-point overflow).
+    GP1(1:KFDIA,MDFMC1NU,IBL)    = PSURFL%PDFMC1L(1:KFDIA)
+    GP1(1:KFDIA,MDFMC10NU,IBL)   = PSURFL%PDFMC10L(1:KFDIA)
+    GP1(1:KFDIA,MDFMC100NU,IBL)  = PSURFL%PDFMC100L(1:KFDIA)
+    GP1(1:KFDIA,MDFMC1000NU,IBL) = PSURFL%PDFMC1000L(1:KFDIA)
+    GP1(1:KFDIA,MLLFLNU,IBL)     = PSURFL%PLLFLL(1:KFDIA)
+    GP1(1:KFDIA,MLWFLNU,IBL)     = PSURFL%PLWFLL(1:KFDIA)
+    GP1(1:KFDIA,MDFFLNU,IBL)     = PSURFL%PDFFLL(1:KFDIA)
+    GP1(1:KFDIA,MDWFLNU,IBL)     = PSURFL%PDWFLL(1:KFDIA)
+    GP1(1:KFDIA,MPPRNU,IBL)      = PSURFL%PPPRL(1:KFDIA)
+  ENDIF
+!* LEFIRE <
 
 !*       3.  COMPUTATION OF T+DT VALUES FOR SURFACE VARIABLES.
 !            -------------------------------------------------

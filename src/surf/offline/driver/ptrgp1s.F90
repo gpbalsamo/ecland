@@ -25,6 +25,15 @@ INTEGER(KIND=JPIM) :: MWSNNU
 INTEGER(KIND=JPIM) :: MTRENU
 INTEGER(KIND=JPIM) :: MWRENU
 INTEGER(KIND=JPIM) :: MWTDNU !water-table depth (LEGWRECHARGE)
+INTEGER(KIND=JPIM) :: MDFMC1NU    !LEFIRE: dead fuel moisture, 1h class
+INTEGER(KIND=JPIM) :: MDFMC10NU   !LEFIRE: dead fuel moisture, 10h class
+INTEGER(KIND=JPIM) :: MDFMC100NU  !LEFIRE: dead fuel moisture, 100h class
+INTEGER(KIND=JPIM) :: MDFMC1000NU !LEFIRE: dead fuel moisture, 1000h class
+INTEGER(KIND=JPIM) :: MLLFLNU     !LEFIRE: live leaf fuel load
+INTEGER(KIND=JPIM) :: MLWFLNU     !LEFIRE: live wood fuel load
+INTEGER(KIND=JPIM) :: MDFFLNU     !LEFIRE: dead foliage fuel load
+INTEGER(KIND=JPIM) :: MDWFLNU     !LEFIRE: dead wood fuel load
+INTEGER(KIND=JPIM) :: MPPRNU      !LEFIRE: previous-rainfall flag
 INTEGER(KIND=JPIM) :: MQLQNU
 
 INTEGER(KIND=JPIM) :: MLAINU   !CTESSEL
