@@ -610,7 +610,10 @@ DO IVAR=1,NVARS2D
   END SELECT
   IF( MYPROC == 1 ) THEN
     IF (STATUS /= 0) THEN
-      CALL MINMAX(CVAR,ZREALD,NMX,NMY,LMASK(ISTP:IENP),NULOUT)
+!     Global field, global NMX*NMY -- so the global mask, as every other
+!     MINMAX call in this file does. LMASK(ISTP:IENP) is this rank's slice,
+!     which MINMAX would read past when NPROC > 1.
+      CALL MINMAX(CVAR,ZREALD,NMX,NMY,LMASK,NULOUT)
     ENDIF
   ENDIF
   CALL MPL_BARRIER()
