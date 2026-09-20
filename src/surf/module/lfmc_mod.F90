@@ -127,8 +127,23 @@ DO JL=KIDIA,KFDIA
     PLFMC_H(JL) = 0.0_JPRB
    ENDIF
   ELSE
-   PLFMC_L(JL) = MERGE(ZACO(ITYL), 0.0_JPRB, ITYL > 0)
-   PLFMC_H(JL) = MERGE(ZACO(ITYH), 0.0_JPRB, ITYH > 0)
+!  Must be a real branch, not MERGE: MERGE is a function, so Fortran does not
+!  guarantee short-circuiting and compilers routinely evaluate BOTH arguments
+!  before applying the mask -- MERGE(ZACO(ITYL),...,ITYL > 0) therefore still
+!  evaluates ZACO(0) at a point with no vegetation of that type, which is the
+!  very out-of-bounds access the ITYL/ITYH guards exist to prevent. Reached
+!  when SUM(PSSM(JL,1:4)) <= 1E-7, i.e. essentially-dry soil, which is
+!  correlated with (not independent of) KTV==0 at bare-soil/desert points.
+   IF (ITYL > 0) THEN
+    PLFMC_L(JL) = ZACO(ITYL)
+   ELSE
+    PLFMC_L(JL) = 0.0_JPRB
+   ENDIF
+   IF (ITYH > 0) THEN
+    PLFMC_H(JL) = ZACO(ITYH)
+   ELSE
+    PLFMC_H(JL) = 0.0_JPRB
+   ENDIF
   ENDIF
  ENDIF
 ENDDO
