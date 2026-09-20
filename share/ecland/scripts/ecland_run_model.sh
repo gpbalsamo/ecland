@@ -21,7 +21,16 @@ fi
 export PATH=${SCRIPTS_DIR}:${PATH}
 
 function abs_path {
-  builtin echo $(cd "$(dirname -- "${1}")" >/dev/null; pwd -P)/$(basename -- "${1}")
+  # The cd must be checked. Unchecked, a non-existent parent directory leaves
+  # `pwd -P` reporting the CALLER's cwd, so this silently returns
+  # <cwd>/<basename> instead of the requested path -- the run then completes
+  # with exit 0 having written its output somewhere else entirely.
+  local _dir
+  _dir=$(cd "$(dirname -- "${1}")" >/dev/null 2>&1 && pwd -P) || {
+    builtin echo "abs_path: no such directory: $(dirname -- "${1}")" >&2
+    return 1
+  }
+  builtin echo "${_dir}/$(basename -- "${1}")"
 }
 
 function trace () {
@@ -123,9 +132,14 @@ ODIR=${OUTPUTDIR}/${STA}
 FORCING=${FORCINGDIR}
 INICLM=${INICLMDIR}
 
+# ${OUTPUTDIR} must exist BEFORE abs_path resolves ${ODIR}: abs_path cds into
+# the parent directory to resolve it, so resolving an output path whose parent
+# has not been created yet cannot work. Creating it first also keeps -o
+# pointing at a not-yet-existing directory working, which is the normal case.
+mkdir -p ${OUTPUTDIR}
+
 ODIR=$(abs_path ${ODIR})
 
-mkdir -p ${OUTPUTDIR}
 rm -rf ${ODIR}
 mkdir -p ${ODIR}
 
