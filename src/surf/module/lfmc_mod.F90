@@ -105,14 +105,30 @@ DO JL=KIDIA,KFDIA
   ITYL = KTVL(JL)
   ITYH = KTVH(JL)
 
+! KTVL/KTVH==0 means "no vegetation of this type" (e.g. bare-soil/desert
+! sites, common in PLUMBER2's arid sites -- AU-ASM, US-SRM/SRG/Wkg/Whs,
+! US-Myb, US-FPe) -- a legitimate value, not a missing-data sentinel, but
+! ZF1..ZF4/ZACO..ZECO are 1-indexed per-type tables with no slot 0, so
+! indexing them with ITYL/ITYH==0 is an out-of-bounds access (crashes with
+! "Subscript #1 of the array ZF1 has value 0"). Guard the same way
+! FUEL_MOD's KTVL(JL) > 0 check already does for the sibling LEFIRE fuel
+! calculation -- no live fuel of a vegetation type that isn't present.
   IF((PSSM(JL,1)+PSSM(JL,2)+PSSM(JL,3)+PSSM(JL,4)) > 1E-7_JPRB) THEN
-   ZSML = MAX((ZF1(ITYL)*PSSM(JL,1)+ZF2(ITYL)*PSSM(JL,2)+ZF3(ITYL)*PSSM(JL,3)+ZF4(ITYL)*PSSM(JL,4))/100.0_JPRB,1E-7_JPRB)
-   ZSMH = MAX((ZF1(ITYH)*PSSM(JL,1)+ZF2(ITYH)*PSSM(JL,2)+ZF3(ITYH)*PSSM(JL,3)+ZF4(ITYH)*PSSM(JL,4))/100.0_JPRB,1E-7_JPRB)
-   PLFMC_L(JL) = MAX(ZACO(ITYL) - ZBCO(ITYL)*EXP(-(ZCCO(ITYL)*ZSML+ZDCO(ITYL)*PLAIL(JL)+ZECO(ITYL)*PLAIL(JL)*ZSML)),30.0_JPRB)
-   PLFMC_H(JL) = MAX(ZACO(ITYH) - ZBCO(ITYH)*EXP(-(ZCCO(ITYH)*ZSMH+ZDCO(ITYH)*PLAIH(JL)+ZECO(ITYH)*PLAIH(JL)*ZSMH)),30.0_JPRB)
+   IF (ITYL > 0) THEN
+    ZSML = MAX((ZF1(ITYL)*PSSM(JL,1)+ZF2(ITYL)*PSSM(JL,2)+ZF3(ITYL)*PSSM(JL,3)+ZF4(ITYL)*PSSM(JL,4))/100.0_JPRB,1E-7_JPRB)
+    PLFMC_L(JL) = MAX(ZACO(ITYL) - ZBCO(ITYL)*EXP(-(ZCCO(ITYL)*ZSML+ZDCO(ITYL)*PLAIL(JL)+ZECO(ITYL)*PLAIL(JL)*ZSML)),30.0_JPRB)
+   ELSE
+    PLFMC_L(JL) = 0.0_JPRB
+   ENDIF
+   IF (ITYH > 0) THEN
+    ZSMH = MAX((ZF1(ITYH)*PSSM(JL,1)+ZF2(ITYH)*PSSM(JL,2)+ZF3(ITYH)*PSSM(JL,3)+ZF4(ITYH)*PSSM(JL,4))/100.0_JPRB,1E-7_JPRB)
+    PLFMC_H(JL) = MAX(ZACO(ITYH) - ZBCO(ITYH)*EXP(-(ZCCO(ITYH)*ZSMH+ZDCO(ITYH)*PLAIH(JL)+ZECO(ITYH)*PLAIH(JL)*ZSMH)),30.0_JPRB)
+   ELSE
+    PLFMC_H(JL) = 0.0_JPRB
+   ENDIF
   ELSE
-   PLFMC_L(JL) = ZACO(ITYL)
-   PLFMC_H(JL) = ZACO(ITYH)
+   PLFMC_L(JL) = MERGE(ZACO(ITYL), 0.0_JPRB, ITYL > 0)
+   PLFMC_H(JL) = MERGE(ZACO(ITYH), 0.0_JPRB, ITYH > 0)
   ENDIF
  ENDIF
 ENDDO
