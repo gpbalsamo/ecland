@@ -346,7 +346,11 @@ DO IDAM=1, NDAM
 
   !! *** 2a update dam volume and inflow -----------------------------------
   ISEQD=DamSeq(IDAM)
-  DamVol    = REAL(P2DAMSTO(ISEQD,1),KIND=JPRB)    
+  !! Storage can undershoot zero by a rounding-level amount when the water-budget
+  !! adjustment in CMF_CALC_INFLOW lowers the inflow after the release was decided
+  !! (WATBAL then debits more than it credits). A negative base under **0.5 is an
+  !! FP invalid operation, so evaluate the rule on the non-negative storage.
+  DamVol    = MAX( REAL(P2DAMSTO(ISEQD,1),KIND=JPRB), 0._JPRB )
   DamInflow = REAL(P2DAMINF(ISEQD,1),KIND=JPRB)
 
   !! *** 2b Reservoir Operation          ------------------------------
@@ -531,6 +535,9 @@ DO IDAM=1, NDAM
   GlbDAMOUT = GlbDAMOUT + DamOutflw*DT
 
   P2DAMSTO(ISEQD,1) = P2DAMSTO(ISEQD,1) + DamInflow * DT - DamOutflw * DT
+  !! floor at zero; the (rounding-level) shortfall stays in DamMiss so the budget
+  !! diagnostic still reports it instead of hiding it
+  P2DAMSTO(ISEQD,1) = MAX( P2DAMSTO(ISEQD,1), 0._JPRD )
 
   GlbDAMSTONXT = GlbDAMSTONXT + P2DAMSTO(ISEQD,1)
 END DO
