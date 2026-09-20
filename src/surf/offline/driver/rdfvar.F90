@@ -1,6 +1,6 @@
 SUBROUTINE RDFVAR(CFILE,CVAR,POUTPUT)
 
-USE YOMFORC1S, ONLY : JPSTPFC  , DTIMFC   ,RTSTFC   ,NSTPFC,DIMFORC
+USE YOMFORC1S, ONLY : JPSTPFC  , DTIMFC   ,RTSTFC   ,NSTPFC,DIMFORC,NFORCWINDOW,LFORCEOF
 USE YOMLUN1S , ONLY : NULOUT   ,NULNAM
 USE YOMDYN1S , ONLY : TSTEP
 USE YOMCT01S , ONLY : NSTOP    ,NSTART
@@ -247,6 +247,15 @@ IF(NSTPFC.GT.JPSTPFC)THEN
   WRITE(*,*)'NSTPFC=',NSTPFC,'JPSTPFC=',JPSTPFC
   CALL ABOR1('RDFVAR')
 ENDIF
+
+! Windowed read: latch "no more file records" here, where NITIM is actually
+! known. This must test the FILE's end (the loaded window already reaches
+! the last record), NOT whether RTSTFC happened to advance on this refill.
+! Those are different conditions: with a small NFORCWINDOW the start record
+! computed above can legitimately repeat for a few refills while the model
+! is still inside the first record, and treating that as end-of-file stops
+! all further refills and walks the index math off the end of the buffer.
+IF (NFORCWINDOW > 0 .AND. (IRDST+NSTPFC-1) >= NITIM) LFORCEOF=.TRUE.
 
 WRITE(NULOUT,*) 'Forcing start-model start,Forcing end - model start,model end - model start (seconds since..):'
 WRITE(NULOUT,*)RTSTFC-ZTSTRT,ZFCEN-ZTSTRT,ZTIMEN-ZTSTRT

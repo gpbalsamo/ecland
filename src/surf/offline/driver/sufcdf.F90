@@ -223,6 +223,19 @@ IF (LPREINT .AND. NFORCWINDOW > 0) THEN
   CALL ABOR1('SUFCDF:')
 ENDIF
 
+! A window must be comfortably larger than the lookahead DTFORC's refill
+! guard reserves (3 records) plus the one record RDFVAR's FLOOR() start
+! computation can hand back, or the window cannot advance far enough per
+! refill and the index math walks off the end of the buffer (observed with
+! NFORCWINDOW=4 on the 2D EU-001 test: 'out of bounds IFP1'). Measured
+! minimum on that test is 5; require 8 so there is real headroom across
+! NACCTYPE/LSWINT/LFLXINT variants. 8 is not a practical restriction --
+! any real use of this parameter is a day's worth of records or more.
+IF (NFORCWINDOW > 0 .AND. NFORCWINDOW < 8) THEN
+  WRITE(NULOUT,*) 'NFORCWINDOW must be 0 (disabled) or >= 8, got ',NFORCWINDOW
+  CALL ABOR1('SUFCDF:')
+ENDIF
+
 LOINTP=.FALSE.
 WRITE(NULOUT,*)'RALT = ',RALT
 WRITE(NULOUT,*)'RZUV = ',RZUV

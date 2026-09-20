@@ -103,7 +103,6 @@ IMPLICIT NONE
 
 !* LOCAL VARIABLES
 REAL(KIND=JPRD) :: ZTIMCUR,ZW,ZWP1,ZWF,ZWFP1,ZWP,ZWPP1,TP1,TP2,TP3
-REAL(KIND=JPRD) :: ZRTSTFCPREV
 REAL(KIND=JPRD) :: ZWa(6,3),ZWTMP(NPOI,6),ZWSUM(NPOI)
 INTEGER(KIND=JPIM) :: IF,IFP1,IFF,IFF1,IFF2,IFF3,IFFP1,JL,IFPREC,IFP,IFPP1,IFSOLAR
 REAL(KIND=JPRD) :: Z_SINLAT, Z_COSLAT, Z_PI, Z_TWOPI,Z_RADCON, Z_CONRAD, Z_RLHH, Z_COSLHH
@@ -145,12 +144,13 @@ IF (LHOOK) CALL DR_HOOK('DTFORC',0,ZHOOK_HANDLE)
 IF (NFORCWINDOW > 0 .AND. .NOT.LFORCEOF) THEN
   ZTIMCUR=RTIMST+REAL(NSTEP,KIND=JPRD)*REAL(TSTEP,KIND=JPRD)
   IF ( (ZTIMCUR-RTSTFC)/DTIMFC + 1.0_JPRD + 3.0_JPRD > REAL(NSTPFC,KIND=JPRD) ) THEN
-    ZRTSTFCPREV=RTSTFC
+    ! RELOAD_FORC1S -> RDFVAR latches LFORCEOF itself once the loaded window
+    ! reaches the file's last record, so that the existing NSTPFC-boundary
+    ! clamps below carry the final record through to the end of the run
+    ! instead of this guard re-reading the same tail every step. Do NOT
+    ! infer end-of-file here from RTSTFC failing to advance: the start
+    ! record can legitimately repeat while the model is still inside it.
     CALL RELOAD_FORC1S
-    ! If the window did not move, the file has no further records: stop
-    ! retrying every step and let the existing NSTPFC-boundary clamps below
-    ! carry the last available record through to the end of the run.
-    IF (RTSTFC <= ZRTSTFCPREV) LFORCEOF=.TRUE.
   ENDIF
 ENDIF
 
