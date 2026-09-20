@@ -205,21 +205,36 @@ IF ( ZZV  .NE. 0 ) THEN
    WRITE(*,*) ' Please check this carefully to avoid interpolation problems!!' 
 !    CALL ABOR1('in rdfvar')
 ENDIF
-!* find the number of steps to read 
-! ZTIMEN=ZTSTRT+(NSTOP-NSTART+1)*TSTEP
-ZTIMEN=ZTSTRT+(NSTOP-NSTART+1)*REAL(TSTEP, KIND=JPRD)
+!* find the number of steps to read
+! ZTIMEN must be the run's ABSOLUTE end time, independent of when this
+! routine is called -- needed so RDFVAR is safely re-callable mid-run for
+! a windowed refill (NFORCWINDOW>0), not just once at NSTART. The original
+! `ZTSTRT+(NSTOP-NSTART+1)*TSTEP` is only correct when called at NSTEP=
+! NSTART (ZTSTRT=RTIMST+NSTART*TSTEP there); called again later it would
+! overshoot by however much simulated time has already elapsed. Since
+! RTIMTR=RTIMST+TSTEP*(NSTEP+0.5) (see updtim1s.F90), the two formulas are
+! IDENTICAL at NSTEP=NSTART -- this is a call-time-independent rewrite of
+! the same target, not a behaviour change, when called once as before.
+ZTIMEN=RTIMST+REAL(NSTOP+1, KIND=JPRD)*REAL(TSTEP, KIND=JPRD)
 ! print*,'NSTOP,NSTART,IRDST,ZTIMEN',NSTOP,NSTART,IRDST,ZTIMEN
 DO JT=IRDST,NITIM
   INSTFC=JT-IRDST+1
   ZFCEN=RTSTFC+DTIMFC*INSTFC
 !   print*,'zz',JT,INSTFC,ZFCEN
   IF(ZFCEN.GT.ZTIMEN) EXIT
+  ! Windowed read: stop at buffer capacity too, not just at the run's end --
+  ! a no-op when JPSTPFC==NDFORC (window disabled), since ZTIMEN is reached
+  ! first in that case exactly as before.
+  IF(INSTFC.GE.JPSTPFC) EXIT
 ENDDO
 NSTPFC=INSTFC
 
-!* check if forcing is available since model run start 
+!* check if forcing is available since model run start -- only a real error
+! if we stopped because the FILE ran out of records (IRDST+NSTPFC-1>=NITIM),
+! not merely because this (possibly partial, windowed) read filled its
+! buffer with more file data still to come on a later refill.
 ZFCEN=RTSTFC+DTIMFC*(NSTPFC-1)
-IF (ZFCEN+TSTEP.LT.ZTIMEN) THEN
+IF (ZFCEN+TSTEP.LT.ZTIMEN .AND. (IRDST+NSTPFC-1).GE.NITIM) THEN
   WRITE(NULOUT,*) " STOP IN ROUTINE SUFCDF"
   WRITE(NULOUT,*) " RUN ENDS LATER THAN FORCING DATA"
   WRITE(NULOUT,*) ' RUN BETWEEN ',ZTSTRT,' AND ',ZTIMEN

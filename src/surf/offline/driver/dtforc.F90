@@ -5,7 +5,7 @@ USE YOMHOOK   ,ONLY : LHOOK    ,DR_HOOK, JPHOOK
 USE YOMFORC1S, ONLY : UFI      ,VFI      ,TFI      ,QFI      ,&
             &PSFI     ,SRFFI    ,TRFFI    ,R30FI    ,S30FI    ,&
             &R30FI_C  ,S30FI_C  ,&
-            &DTIMFC   ,RTSTFC   ,NSTPFC, CO2FI
+            &DTIMFC   ,RTSTFC   ,NSTPFC, CO2FI, NFORCWINDOW, LFORCEOF
 USE YOMRIP   , ONLY : RTIMTR   ,RTIMST, NSSSSS
 USE YOMLUN1S , ONLY : NULOUT
 USE YOMDYN1S , ONLY : NSTEP    ,TSTEP    ,NACCTYPE,LPREINT,LSWINT,LFLXINT
@@ -103,6 +103,7 @@ IMPLICIT NONE
 
 !* LOCAL VARIABLES
 REAL(KIND=JPRD) :: ZTIMCUR,ZW,ZWP1,ZWF,ZWFP1,ZWP,ZWPP1,TP1,TP2,TP3
+REAL(KIND=JPRD) :: ZRTSTFCPREV
 REAL(KIND=JPRD) :: ZWa(6,3),ZWTMP(NPOI,6),ZWSUM(NPOI)
 INTEGER(KIND=JPIM) :: IF,IFP1,IFF,IFF1,IFF2,IFF3,IFFP1,JL,IFPREC,IFP,IFPP1,IFSOLAR
 REAL(KIND=JPRD) :: Z_SINLAT, Z_COSLAT, Z_PI, Z_TWOPI,Z_RADCON, Z_CONRAD, Z_RLHH, Z_COSLHH
@@ -129,8 +130,29 @@ INTEGER(KIND=JPIM) :: IST,IEND,IPROMA,IBL
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
 #include "fctast.h"
+#include "reload_forc1s.intfb.h"
 
 IF (LHOOK) CALL DR_HOOK('DTFORC',0,ZHOOK_HANDLE)
+
+! Windowed forcing refill (NFORCWINDOW>0 only -- see yomforc1s.F90's own
+! comment; NFORCWINDOW=0, the default, never enters this branch, so
+! nothing below changes behaviour for any run that doesn't set it). Must
+! run before ANY of the index math further down touches a forcing array --
+! that includes the LSWINT solar-angle block just below, which reads
+! SRFFI directly. Refill early enough to cover the largest lookahead any
+! of those index calculations uses (+2 records, the LPREINT 3-consecutive-
+! step scheme's IFF3=IFF1+2) plus one record of margin.
+IF (NFORCWINDOW > 0 .AND. .NOT.LFORCEOF) THEN
+  ZTIMCUR=RTIMST+REAL(NSTEP,KIND=JPRD)*REAL(TSTEP,KIND=JPRD)
+  IF ( (ZTIMCUR-RTSTFC)/DTIMFC + 1.0_JPRD + 3.0_JPRD > REAL(NSTPFC,KIND=JPRD) ) THEN
+    ZRTSTFCPREV=RTSTFC
+    CALL RELOAD_FORC1S
+    ! If the window did not move, the file has no further records: stop
+    ! retrying every step and let the existing NSTPFC-boundary clamps below
+    ! carry the last available record through to the end of the run.
+    IF (RTSTFC <= ZRTSTFCPREV) LFORCEOF=.TRUE.
+  ENDIF
+ENDIF
 
 IF ( LSWINT ) THEN
     Z_PI=2.0_JPRD*ASIN(1.0_JPRD)

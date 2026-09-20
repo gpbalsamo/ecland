@@ -12,7 +12,7 @@ USE YOMDPHY  , ONLY : NCSS, NGPP     ,NVPD     ,NGCC     ,NVSO     ,&
 USE YOMDIM1S , ONLY : NPROMA
 USE YOMLUN1S , ONLY : NULOUT   ,NULNAM
 USE YOMLOG1S , ONLY : CFOUT    ,NDIMCDF
-USE YOMFORC1S, ONLY : JPSTPFC
+USE YOMFORC1S, ONLY : JPSTPFC  ,NFORCWINDOW ,LFORCEOF
 USE YOEPHY   , ONLY : LEOCML   ,LEFLAKE  ,LEURBAN, LECTESSEL, LECLIM10D
 
 #ifdef DOC
@@ -175,6 +175,10 @@ NLAT=1
 NLON=1 
 JPSTPFC=150000 ! max forcing dimension (1d site)
 NDFORC=0    ! namelist forcing dimension
+NFORCWINDOW=0 ! 0 = load the whole NDFORC-length series (default, unchanged behaviour);
+              ! >0 = keep only this many forcing records resident at once, refilled
+              ! on demand by DTFORC -- see yomforc1s.F90/rdfvar.F90/reload_forc1s.F90.
+LFORCEOF=.FALSE.
 NCOOR=0		! selected grid point
 
 !*       4.  OpenMP
@@ -186,6 +190,7 @@ REWIND(NULNAM)
 READ(NULNAM,NAMDIM) 
 
 IF(NDFORC /= 0)JPSTPFC=NDFORC
+IF(NFORCWINDOW > 0 .AND. NFORCWINDOW < JPSTPFC) JPSTPFC=NFORCWINDOW ! windowed read: allocate only the window, not the whole series
 IF (NDIMCDF == 2)THEN
   NLALO=NLAT*NLON
 ELSE

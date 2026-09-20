@@ -7,5 +7,9 @@
 ! nor does it submit to any jurisdiction.
 
 !*    -----------------------------------------------------------------
-NAMELIST/NAMDIM/ NLON,NLAT,NDFORC,NCOOR,NPROMA,NCSNEC,NCSS
+! NFORCWINDOW: number of forcing records to keep resident at once, 0 (the
+! default) means "load the whole NDFORC-length series", exactly as before
+! this parameter existed. See yomforc1s.F90, rdfvar.F90, reload_forc1s.F90
+! and dtforc.F90 for the windowed-read design this enables.
+NAMELIST/NAMDIM/ NLON,NLAT,NDFORC,NCOOR,NPROMA,NCSNEC,NCSS,NFORCWINDOW
 !     -----------------------------------------------------------------

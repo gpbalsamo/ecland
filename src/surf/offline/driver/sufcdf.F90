@@ -3,12 +3,14 @@ SUBROUTINE SUFCDF
 USE YOMFORC1S, ONLY : JPSTPFC  ,UFI      ,VFI      ,TFI      ,&
      &            QFI      ,PSFI     ,SRFFI    ,TRFFI    ,R30FI    ,&
      &            S30FI    ,R30FI_C  ,S30FI_C  ,DTIMFC   ,RTSTFC   ,&
-     &            NSTPFC,DIMFORC, CO2FI
+     &            NSTPFC,DIMFORC, CO2FI, NFORCWINDOW, &
+     &            CFFORCU  ,CFFORCV  ,CFFORCT  ,CFFORCQ  ,CFFORCC  ,&
+     &            CFFORCP  ,CFFORCRAIN,CFFORCSNOW,CFFORCSW,CFFORCLW
 USE YOMRIP   , ONLY : RTIMTR
 USE YOMCT01S , ONLY : NSTOP    ,NSTART
 USE YOMCST   , ONLY : RTT ,RDAY ,RG ,RETV, RLVTT, RLSTT, RMD, RMCO2
 USE YOMLUN1S , ONLY : NULOUT   ,NULNAM
-USE YOMDYN1S , ONLY : TSTEP
+USE YOMDYN1S , ONLY : TSTEP     ,LPREINT
 USE YOMLOG1S , ONLY : LDBGS1   ,NDIMCDF
 USE YOMGF1S  , ONLY : RALT     ,RZUV
 USE YOMGC1S  , ONLY : LMASK
@@ -81,6 +83,7 @@ USE MPL_MODULE
 IMPLICIT NONE
 #include "rdfvar.intfb.h"
 #include "minmax.intfb.h"
+#include "reload_forc1s.intfb.h"
 
 CHARACTER CHEADER*400
 CHARACTER*100 CNAME
@@ -175,12 +178,50 @@ CFORCLW  ='forcing'
 REWIND(NULNAM)
 READ(NULNAM,NAMFORC)
 
-!! Move to modules ! 
+!! Move to modules !
 DTIMFC =ZDTFORC
 RALT = ZPHISTA
 RZUV = ZUV
 DIMFORC=NDIMFORC
 
+! Mirror the per-variable file names into YOMFORC1S so RELOAD_FORC1S can
+! see them on a later windowed refill -- CFORCx above are local to this
+! subroutine (declared via the #include "namforc1s.h" namelist block) and
+! this namelist read only ever happens once, here.
+CFFORCU=CFORCU
+CFFORCV=CFORCV
+CFFORCT=CFORCT
+CFFORCQ=CFORCQ
+CFFORCC=CFORCC
+CFFORCP=CFORCP
+CFFORCRAIN=CFORCRAIN
+CFFORCSNOW=CFORCSNOW
+CFFORCSW=CFORCSW
+CFFORCLW=CFORCLW
+
+! LOADIAB's adiabatic-height correction (below) modifies TFI/PSFI/QFI
+! in place, in the middle of the read sequence, before the snowfall
+! deduction that depends on the corrected TFI -- RELOAD_FORC1S bundles
+! that whole sequence into one call and does not include this correction,
+! so the two are not composable yet. Not a fundamental limitation, just
+! not implemented -- abort loudly rather than silently skip the
+! correction on refills.
+IF (LOADIAB .AND. NFORCWINDOW > 0) THEN
+  WRITE(NULOUT,*) 'LOADIAB is not yet supported together with NFORCWINDOW windowed reads'
+  CALL ABOR1('SUFCDF:')
+ENDIF
+
+! LPREINT's precipitation sub-step redistribution (DTFORC, NACCTYPE=2)
+! treats "IFF1 <= 1" as the start of the forcing period and switches to a
+! different weight set there. With a windowed read that condition would be
+! hit at the start of EVERY window, not just at the start of the run, so
+! the answers would depend on the window size. Refilling one record early
+! would fix it; until that is implemented, refuse the combination rather
+! than silently changing results.
+IF (LPREINT .AND. NFORCWINDOW > 0) THEN
+  WRITE(NULOUT,*) 'LPREINT is not yet supported together with NFORCWINDOW windowed reads'
+  CALL ABOR1('SUFCDF:')
+ENDIF
 
 LOINTP=.FALSE.
 WRITE(NULOUT,*)'RALT = ',RALT
@@ -188,6 +229,13 @@ WRITE(NULOUT,*)'RZUV = ',RZUV
 WRITE(NULOUT,*)'DTIMFC  = ',DTIMFC
 WRITE(NULOUT,*)'DIMFORC  = ',DIMFORC
 
+
+IF (LOADIAB) THEN
+! LOADIAB=.TRUE. is rare (the guard above already ensures NFORCWINDOW=0
+! whenever it's set) and its own adiabatic-height correction below is
+! order-dependent on TFI/PSFI/QFI already being read -- kept exactly as
+! the original single inline sequence, untouched, rather than folded into
+! RELOAD_FORC1S. See that subroutine's own header for why.
 
 !* read forcing variables one by one
 !* check presence of specific fields:
@@ -419,7 +467,13 @@ IF (LEAIRCO2COUP) THEN
   ENDDO
 ENDIF
 
-
+ELSE
+  ! LOADIAB=.FALSE. (the default, and everything windowing supports):
+  ! the exact same sequence as the IF(LOADIAB) branch above, minus the
+  ! adiabatic correction -- factored out so DTFORC's windowed refill can
+  ! call it again later without duplicating this list a third time.
+  CALL RELOAD_FORC1S
+ENDIF
 
 WRITE(NULOUT,*) " FORCING DATA READ FOR ",NSTPFC," FORCING STEPS"
 
