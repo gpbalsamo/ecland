@@ -68,6 +68,7 @@ INTEGER(KIND=JPIM) :: ITYL, ITYH
 REAL(KIND=JPRB)    :: ZTFL,ZLFL, ZHFL
 REAL(KIND=JPRB)    :: ZLLL,ZLWL,ZHLL,ZHWL,ZLDF,ZLDW,ZHDF,ZHDW
 REAL(KIND=JPRB)    :: ZNC
+REAL(KIND=JPRB)    :: ZCVL, ZCVH ! cover of each vegetation type, zero where the type is absent
 
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
@@ -105,23 +106,37 @@ ZDFF=(/1.0_JPRB,1.0_JPRB,0.45_JPRB,0.6_JPRB,0.9_JPRB,0.1_JPRB,1.0_JPRB, &
      & 0.5_JPRB,0.5_JPRB,0.9_JPRB,0.9_JPRB,0.9_JPRB/)
 
 DO JL=KIDIA,KFDIA
-  IF ((PCVL(JL) + PCVH(JL)) > 0.001_JPRB .AND. KTVL(JL) > 0) THEN
+! KTVL/KTVH==0 means "no vegetation of this type" (bare-soil, or a point with
+! only low or only high vegetation). ZFD..ZDFF are 1-indexed per-type tables
+! with no slot 0, so indexing them with a zero type is an out-of-bounds read
+! (silent in a release build, "Subscript #1 of the array ZFD has value 0"
+! under -check bounds). Treat the absent type as zero cover and clamp its
+! (then irrelevant) table index to 1: every weight and cap below multiplies
+! by cover, so the absent type contributes exactly zero, and a point with
+! only one vegetation type gets the whole fuel pool on that type. Points
+! with both types present are unchanged.
+  ZCVL = 0.0_JPRB
+  ZCVH = 0.0_JPRB
+  IF (KTVL(JL) > 0) ZCVL = PCVL(JL)
+  IF (KTVH(JL) > 0) ZCVH = PCVH(JL)
 
-   ITYL = KTVL(JL)
-   ITYH = KTVH(JL)
-   ZNC  = 1.0_JPRB/(PCVH(JL)+PCVL(JL))
+  IF ((ZCVL + ZCVH) > 0.001_JPRB) THEN
+
+   ITYL = MAX(1,KTVL(JL))
+   ITYH = MAX(1,KTVH(JL))
+   ZNC  = 1.0_JPRB/(ZCVH+ZCVL)
 
    ZTFL = PLLFL(JL) + PLWFL(JL) + PDFFL(JL) + PDWFL(JL)
    ZTFL = MAX(0.0_JPRB,ZTFL - (PNEE(JL)*PTSTEP/2.0_JPRB)) ! PNEE in kg CO2 m-2 s-1, assume total flux 50% carbon
 
-   ZLFL = ZTFL * ( (ZFD(ITYL)*PCVL(JL)*ZNC) / (ZFD(ITYL)*PCVL(JL)*ZNC + ZFD(ITYH)*PCVH(JL)*ZNC) )
-   ZHFL = ZTFL * ( (ZFD(ITYH)*PCVH(JL)*ZNC) / (ZFD(ITYL)*PCVL(JL)*ZNC + ZFD(ITYH)*PCVH(JL)*ZNC) )
+   ZLFL = ZTFL * ( (ZFD(ITYL)*ZCVL*ZNC) / (ZFD(ITYL)*ZCVL*ZNC + ZFD(ITYH)*ZCVH*ZNC) )
+   ZHFL = ZTFL * ( (ZFD(ITYH)*ZCVH*ZNC) / (ZFD(ITYL)*ZCVL*ZNC + ZFD(ITYH)*ZCVH*ZNC) )
 
-   ZLLL = MIN(ZLFL, ZLMA(ITYL)*PCVL(JL)*ZNC*PLAIL(JL)) ! Live Low Leaf Load
-   ZHLL = MIN(ZHFL, ZLMA(ITYH)*PCVH(JL)*ZNC*PLAIH(JL)) ! Live High Leaf Load
+   ZLLL = MIN(ZLFL, ZLMA(ITYL)*ZCVL*ZNC*PLAIL(JL)) ! Live Low Leaf Load
+   ZHLL = MIN(ZHFL, ZLMA(ITYH)*ZCVH*ZNC*PLAIH(JL)) ! Live High Leaf Load
 
-   ZLWL = MIN(ZLFL - ZLLL, (ZLAC(ITYL)*PCVL(JL)*ZNC*PLAIL(JL)**1.667_JPRB + ZMSC(ITYL)*ZLFL)) ! Live Low Wood Load
-   ZHWL = MIN(ZHFL - ZHLL, (ZLAC(ITYH)*PCVH(JL)*ZNC*PLAIH(JL)**1.667_JPRB + ZMSC(ITYH)*ZHFL)) ! Live High Wood Load
+   ZLWL = MIN(ZLFL - ZLLL, (ZLAC(ITYL)*ZCVL*ZNC*PLAIL(JL)**1.667_JPRB + ZMSC(ITYL)*ZLFL)) ! Live Low Wood Load
+   ZHWL = MIN(ZHFL - ZHLL, (ZLAC(ITYH)*ZCVH*ZNC*PLAIH(JL)**1.667_JPRB + ZMSC(ITYH)*ZHFL)) ! Live High Wood Load
 
    ZLDF = MAX(0.0_JPRB,ZDFF(ITYL)*(ZLFL-(ZLLL + ZLWL))) ! Dead Low Foliage Load
    ZHDF = MAX(0.0_JPRB,ZDFF(ITYH)*(ZHFL-(ZHLL + ZHWL))) ! Dead High Foliage Load
