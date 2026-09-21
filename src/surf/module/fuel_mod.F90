@@ -149,6 +149,14 @@ DO JL=KIDIA,KFDIA
    PDFFL(JL) = ZLDF+ZHDF
    PDWFL(JL) = ZLDW+ZHDW
 
+  ELSE
+! No vegetation of either type (bare soil, or cover below the 0.001 threshold):
+! there is no fuel. Without this the loads keep whatever they were initialised
+! to, i.e. the 10 kg m-2 cold-start default of RDSUPR, for the whole run.
+   PLLFL(JL) = 0.0_JPRB
+   PLWFL(JL) = 0.0_JPRB
+   PDFFL(JL) = 0.0_JPRB
+   PDWFL(JL) = 0.0_JPRB
   ENDIF
 ENDDO
 
