@@ -435,6 +435,14 @@ DO JL=KIDIA,KFDIA
   ZASSIMTOT(JL) = 0._JPRB
   ZRDTOT(JL) = 0._JPRB
   ZLEAF_GS_TOP(JL) = 0._JPRB
+  ! Only assigned on the active-vegetation branch below (ZWATER_LIM at
+  ! ~line 601, ZJMAX25 at ~690/702/742), so without this they hold
+  ! uninitialised memory at every other point. Currently latent -- their
+  ! reads are guarded by the same condition as their writes -- but a probe
+  ! summing ZWATER_LIM, a 0-1 bounded factor, over ~1e5 points returned
+  ! ~1.3e25, i.e. raw memory. Initialise defensively.
+  ZWATER_LIM(JL) = 0._JPRB
+  ZJMAX25(JL) = 0._JPRB
 !  PGSMEAN(JL) = 0._JPRB
 
   ! Change units to hPa
