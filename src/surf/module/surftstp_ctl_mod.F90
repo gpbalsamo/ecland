@@ -1243,11 +1243,7 @@ DO JL=KIDIA,KFDIA
     ZFLUX=PRSFC(JL)+PRSFL(JL)+PSSFC(JL)+PSSFL(JL)-PROFS(JL)-PROFD(JL)+ZEVAP
     ZRES=ZSTORAGE-ZFLUX
     ZWTRH=MAX(ZEPSILON,MAX(ABS(ZSTORAGE),ABS(ZFLUX))*ZEPSILON)
-    
-    if (ZEPSILON .ne. ZWTRH ) then
-      print*,ZEPSILON, ZWTRH
-      read(*,*)
-    endif 
+
     IF ( ABS(ZRES) > ZWTRH ) THEN
       write(*,'("DDH TWBAL:storage,flux,residual,threshold,EPSILON (kg/m2/s):",1X,I10,5(1X,E14.6E3))') &
             JL,ZSTORAGE,ZFLUX,ZRES,ZWTRH,ZEPSILON
