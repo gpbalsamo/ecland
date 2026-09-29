@@ -558,7 +558,7 @@ LOGICAL         :: LEGLACIERMELT
 REAL(KIND=JPRB) :: ZCDAWZ(KLON,KLEVS)
 REAL(KIND=JPRB) :: ZSLRFLTI(KLON,KTILES)
 REAL(KIND=JPRD) :: ZTSPHY
-REAL(KIND=JPRB) :: ZHOH2O,ZSNPERT
+REAL(KIND=JPRB) :: ZHOH2O,ZSNPERT,ZSNTOTB
 REAL(KIND=JPRB) :: ZRSNM1M(KLON,KLEVSN)
 REAL(KIND=JPRB) :: ZEPSILON
 
@@ -729,11 +729,28 @@ DO JL=KIDIA,KFDIA
 ! Take care of permanent snow areas! 
 !reset to max allowed snow mass 1500.0  kg/m2 
   IF ( SUM(ZSN(JL,:)) >ZSNPERT ) THEN
+! The snowpack is truncated to ZSNPERT here. The mass removed is REAL water
+! that must leave the column, otherwise it is destroyed: it appears in no
+! storage term and in no flux term, and shows up directly as a residual in
+! BUDGET_MASS_DDH. ZROFS exists to carry it to surface runoff as ice calving
+! (see section 5.3) but was declared, zeroed and added while NEVER being
+! assigned, so the outlet was plumbed and the water never entered it.
+! Measured on the WFDE5 1988-2024 campaign before this fix: 21% of land points
+! pinned at exactly 10000.0 kg m-2, 46.1% of the points failing the model's own
+! water-balance check sitting at the cap with snow unchanged t->t+1, and a
+! +2072 Gt/yr water-budget residual concentrated on Greenland and the Antarctic
+! margin.
+! Taken as (mass before - mass after) rather than (total - ZSNPERT) so the
+! runoff equals the mass ACTUALLY removed, which stays exactly conservative
+! even when the per-layer arithmetic below cannot reach ZSNPERT exactly.
+! ZTSPHY = 1/PTSPHY converts to a rate, matching PROFS at the point of use.
+      ZSNTOTB = SUM(ZSN(JL,:))
       IF (KLMAX /= KLEVSN) THEN
         ZSN(JL,KLMAX)  = ZSNPERT - SUM(ZSN(JL,1:KLMAX-1)) - SUM(ZSN(JL,KLMAX+1:KLEVSN))  
       ELSE
         ZSN(JL,KLMAX)  = ZSNPERT - SUM(ZSN(JL,1:KLMAX-1))
       ENDIF
+      ZROFS(JL) = ( ZSNTOTB - SUM(ZSN(JL,:)) ) * ZTSPHY
   ENDIF
 
 ENDDO
@@ -1151,10 +1168,19 @@ IF (YDSOIL%LEROLAKE) THEN
     IF ( .NOT. LDLAND(JL)  .AND. LDLAKE(JL) ) THEN
       PROFS(JL)=PROFS(JL)+ZRSFC(JL)+ZRSFL(JL)+ZSSFC(JL)+ZSSFL(JL)
     ENDIF
-    !* Add ice calving to surface runoff 
-    PROFS(JL)=PROFS(JL)+ZROFS(JL)
   ENDDO
 ENDIF
+
+!*         5.3b ice calving (permanent-snow cap excess) as surface runoff
+! Unconditional: this is the water removed by the ZSNPERT truncation in
+! section 2, and it must leave the column whatever the lake configuration is.
+! It used to sit inside the LEROLAKE branch above, which gated an ICE term on a
+! LAKE switch -- harmless only because LEROLAKE defaults to .TRUE., but it
+! would have silently destroyed the calving flux for anyone running
+! LEROLAKE=.FALSE.
+DO JL=KIDIA,KFDIA
+  PROFS(JL)=PROFS(JL)+ZROFS(JL)
+ENDDO
 
 IF (LECTESSEL) THEN 
 

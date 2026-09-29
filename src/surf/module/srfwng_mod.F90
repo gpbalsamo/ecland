@@ -178,6 +178,22 @@ DO JL=KIDIA,KFDIA
       IF (JK < KLEVS_WB) THEN
 !          ACCOUNT for water correction on next level
         PWSA(JL,JK+1)=PWSA(JL,JK+1)+ZDWD*ZDI(JL,JK)*ZIDI(JL,JK+1)
+      ELSE
+!          DEEPEST LAYER: there is no layer below to take the deficit, so
+!          without this it was clipped to zero and DISCARDED -- water created
+!          from nothing. Carry it to sub-surface runoff, exactly mirroring the
+!          supersaturation excess ZRRRI below, which is already routed there.
+!          ZDWD <= 0, so this REDUCES PROD and can make it negative: that is
+!          the honest statement that evaporation removed more water than the
+!          column held. Nothing upstream limits bare-soil evaporation
+!          (srfwexc_mod.F90:347 applies tile 8 to layer 1 unconditionally,
+!          while tiles 4/6/7 only DISTRIBUTE their demand by root water), so
+!          the over-extraction is a model characteristic; this makes it
+!          visible in the water budget instead of silently creating mass.
+!          Measured on WFDE5 1994: 1860 points (2.1% of land), all hyper-arid
+!          -- Sahara/Sahel, Atacama, Peruvian coast -- reaching exactly zero
+!          total soil moisture and evaporating 307.6 Gt/yr from nothing.
+        PROD(JL)=PROD(JL)+ZDI(JL,JK)*RHOH2O*ZDWD
       ENDIF
       ZRRRI(JL,JK)=MAX(0.0_JPRB,PWSA(JL,JK)-ZWSAT)
       
