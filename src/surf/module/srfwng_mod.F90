@@ -193,7 +193,9 @@ DO JL=KIDIA,KFDIA
 !          Measured on WFDE5 1994: 1860 points (2.1% of land), all hyper-arid
 !          -- Sahara/Sahel, Atacama, Peruvian coast -- reaching exactly zero
 !          total soil moisture and evaporating 307.6 Gt/yr from nothing.
-        PROD(JL)=PROD(JL)+ZDI(JL,JK)*RHOH2O*ZDWD
+        IF (YDSOIL%LEWBDEEPFIX) THEN
+          PROD(JL)=PROD(JL)+ZDI(JL,JK)*RHOH2O*ZDWD
+        ENDIF
       ENDIF
       ZRRRI(JL,JK)=MAX(0.0_JPRB,PWSA(JL,JK)-ZWSAT)
       

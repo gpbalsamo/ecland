@@ -329,7 +329,9 @@ REAL(KIND=JPRB),ALLOCATABLE :: RLEVSNMAX_GL(:) ! ARRAY OF MAXIMUM LAYER THICKNES
 LOGICAL :: LESKTI5   ! new skin conductivity computation for tile 5 
 LOGICAL :: LESKTI8   ! new skin conductivity computation for tile 5 
 LOGICAL :: LESOILCOND ! use new soil conductivity as in fcsurf defined function
-LOGICAL :: LEROLAKE   ! runoff as precipitation over resolved lakes 
+LOGICAL :: LEROLAKE   ! runoff as precipitation over resolved lakes
+LOGICAL :: LEWBCALVFIX ! snow-cap excess leaves as ice calving runoff (water conservation)
+LOGICAL :: LEWBDEEPFIX ! deepest-layer soil-moisture deficit leaves as sub-surface runoff 
 
 !! TESTING LOGICALS
 LOGICAL :: LEWBSOILFIX   ! If true activate fix to converve water (extract even when RC=0) 

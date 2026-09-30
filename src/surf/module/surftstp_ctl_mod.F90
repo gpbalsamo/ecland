@@ -750,7 +750,9 @@ DO JL=KIDIA,KFDIA
       ELSE
         ZSN(JL,KLMAX)  = ZSNPERT - SUM(ZSN(JL,1:KLMAX-1))
       ENDIF
-      ZROFS(JL) = ( ZSNTOTB - SUM(ZSN(JL,:)) ) * ZTSPHY
+      IF (YDSOIL%LEWBCALVFIX) THEN
+        ZROFS(JL) = ( ZSNTOTB - SUM(ZSN(JL,:)) ) * ZTSPHY
+      ENDIF
   ENDIF
 
 ENDDO
@@ -1178,9 +1180,11 @@ ENDIF
 ! LAKE switch -- harmless only because LEROLAKE defaults to .TRUE., but it
 ! would have silently destroyed the calving flux for anyone running
 ! LEROLAKE=.FALSE.
-DO JL=KIDIA,KFDIA
-  PROFS(JL)=PROFS(JL)+ZROFS(JL)
-ENDDO
+IF (YDSOIL%LEWBCALVFIX) THEN
+  DO JL=KIDIA,KFDIA
+    PROFS(JL)=PROFS(JL)+ZROFS(JL)
+  ENDDO
+ENDIF
 
 IF (LECTESSEL) THEN 
 
