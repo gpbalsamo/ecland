@@ -72,7 +72,16 @@ LINTERP=true              !  true for runoff interpolation using input matrix
 LINPEND  = .FALSE.        ! true for runoff endian conversion
 LITRPCDF = .TRUE.         ! * true for netCDF input matrix
 CINPMAT  ="inpmat.nc"     ! input matrix file name
-DROFUNIT =86400.          ! runoff unit conversion to get m/s.
+! DROFUNIT converts incoming runoff to m3/m2/s: CaMa divides by it
+! (cmf_ctrl_forcing_mod.F90:782,813). The offline driver hands over runoff
+! accumulated as METRES OVER ONE COUPLING INTERVAL -- cnt41s.F90:218 adds
+! D1STSRO2*TSTEP*0.001 every step and zeroes the buffer after each handover
+! (cnt41s.F90:364). So DROFUNIT must equal TCOUPFREQ*3600, the interval in
+! seconds. This test couples 12-hourly, so 43200, not 86400: the old value
+! made all routed discharge in this configuration a factor 2 too small.
+! Safe for the references, which capture o_gg.nc and the log only -- no CaMa
+! output -- and NCMF2LAKEC=0 here, so nothing feeds back into ecLand.
+DROFUNIT =43200.          ! runoff unit conversion to get m/s.
 CROFCDF="runoff.nc"       ! * netCDF input runoff file name
 CVNROF   = "Qs"           ! * netCDF input runoff variable name
 CVNSUB   = "Qsb"          ! * netCDF input runoff variable name
