@@ -274,7 +274,7 @@ LECOLDSTART=.FALSE.
 LEROLAKE=.TRUE.
 ! Water-conservation fixes. Default .TRUE. because each plugs a real leak;
 ! set .FALSE. to reproduce upstream ecmwf-ifs/ecland bit-identically.
-LEWBCALVFIX=.TRUE.
+LEWBCALVFIX=.FALSE.
 LEWBDEEPFIX=.TRUE.
 ! read namelist
 REWIND(NULNAM)

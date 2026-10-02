@@ -161,7 +161,7 @@ USE YOMGDI1S , ONLY : D1STISRD ,D1STISRU ,D1STITRD ,D1STITRU ,&
             &D1SSDS   ,D1SWLDS  ,&
             &D1SLSRF  ,D1SCRF   ,D1SLSSF  ,D1SCSF   ,&
             &D1STE    ,D1STRO   ,D1STSRO  ,D1SMLT  ,&
-            &D1STIRRFLX,D1SGWREC,D1SGWCAP,D1SDELAQ,&
+            &D1STIRRFLX,D1SGWREC,D1SGWCAP,D1SDELAQ,D1SSNFIRN,&
             &D1SSDSSL,&
             &D1SVTRC  ,D1SVTRA ,&
             &D1T2M    ,D1D2M,&
@@ -443,6 +443,9 @@ D1STIRRFLX(KIDIA:KFDIA,IBL) = PFLUX%PIRFL(KIDIA:KFDIA)
 ! CLAMPED water-table tendency so it reflects what the aquifer actually gained --
 ! (PGWREC-PGWCAP)*dt minus D1SDELAQ is therefore the water lost to the RGWTD_MIN /
 ! RDBEDROCK clamps, which is otherwise invisible.
+! Snow-to-firn conversion over glaciers: mass the permanent-snow cap removes.
+! Zero everywhere the cap is not reached, i.e. almost everywhere.
+D1SSNFIRN(KIDIA:KFDIA,IBL) = PFLUX%PSNFIRN(KIDIA:KFDIA)
 D1SGWREC(KIDIA:KFDIA,IBL) = PFLUX%PGWREC(KIDIA:KFDIA)
 D1SGWCAP(KIDIA:KFDIA,IBL) = PFLUX%PGWCAP(KIDIA:KFDIA)
 D1SDELAQ(KIDIA:KFDIA,IBL) = -PTSPHY*RHOH2O*YSURF%YSOIL%RGWSPECYIELD &

@@ -38,7 +38,7 @@ SUBROUTINE SURFTSTP_CTL(KIDIA , KFDIA , KLON  , KLEVS ,KCWS, KTILES,&
  & YDURB   ,YDAGS   ,YDMLM   ,YDOCEAN_ML,&
  & LNEMOICETHK, PTHKICE, &
 !-DIAGNOSTICS OUTPUT
- & PTSDFL  , PROFD , PROFS, PIRFL, PGWREC, PGWCAP,&
+ & PTSDFL  , PROFD , PROFS, PIRFL, PGWREC, PGWCAP, PSNFIRN,&
  & PWFSD   , PMELT , PFWEV, PENES,&
  & PDIFM   , PDIFT , PDIFS, POTKE,&        
  & PRESPBSTR,PRESPBSTR2,PBIOMASS_LAST,&                            !CTESSEL  
@@ -446,6 +446,7 @@ REAL(KIND=JPRB)   ,INTENT(OUT)   :: PROFD(KLON)
 REAL(KIND=JPRB)   ,INTENT(INOUT) :: PROFS(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PIRFL(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PGWREC(KLON)
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PSNFIRN(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PGWCAP(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PWFSD(KLON)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PMELT(KLON) 
@@ -713,6 +714,7 @@ ELSE
 
 ENDIF
 ZROFS(KIDIA:KFDIA)=0._JPRB
+PSNFIRN(KIDIA:KFDIA)=0._JPRB
 
 
 !Snow is reset to 10000 mm as land-ice is introduced, to avoid large accumulations
@@ -750,8 +752,21 @@ DO JL=KIDIA,KFDIA
       ELSE
         ZSN(JL,KLMAX)  = ZSNPERT - SUM(ZSN(JL,1:KLMAX-1))
       ENDIF
+! The mass the cap removes. It is REAL water leaving the snowpack, so it must
+! be accounted somewhere or it is destroyed (that was the v1.0 behaviour this
+! replaces). It is NOT runoff: on an ice sheet this snow compacts to firn and
+! then to ice, and leaves via ice dynamics over decades to centuries, not as
+! river water at the accumulation point. So it is reported as its own
+! snow-to-firn conversion flux and is NOT added to PROFS unless LEWBCALVFIX is
+! explicitly set (default .FALSE.).
+! The v1.0 assignment removed by ff35da6 (glacier tile parameterisation) was
+!   ZROFS(JL) = MAX(0,ZSN(JL,KLMAX)-SUM(PSNM1M(JL,:)))*ZTSPHY
+! Taken here as (mass before - mass after) so it equals the mass ACTUALLY
+! removed, which stays exact even when the per-layer arithmetic below cannot
+! reach ZSNPERT precisely.
+      PSNFIRN(JL) = ( ZSNTOTB - SUM(ZSN(JL,:)) ) * ZTSPHY
       IF (YDSOIL%LEWBCALVFIX) THEN
-        ZROFS(JL) = ( ZSNTOTB - SUM(ZSN(JL,:)) ) * ZTSPHY
+        ZROFS(JL) = PSNFIRN(JL)
       ENDIF
   ENDIF
 
@@ -1270,7 +1285,13 @@ DO JL=KIDIA,KFDIA
       ZEVAP=ZEVAP+PFRTI(JL,JT)*PEVAPTI(JL,JT)
     ENDDO
     ZEVAP=ZEVAP !+ ZEINTTI(JL,3)-MAX(0._JPRB,(PFRTI(JL,3)*PEVAPTI(JL,3)))
+! PSNFIRN is mass leaving the snowpack to the firn/ice reservoir. It is a real
+! sink of column water, so the balance must see it; otherwise capped glacier
+! points report a spurious residual exactly as they did before this term
+! existed. When LEWBCALVFIX is on it is already inside PROFS, so counting it
+! here too would double it.
     ZFLUX=PRSFC(JL)+PRSFL(JL)+PSSFC(JL)+PSSFL(JL)-PROFS(JL)-PROFD(JL)+ZEVAP
+    IF (.NOT. YDSOIL%LEWBCALVFIX) ZFLUX=ZFLUX-PSNFIRN(JL)
     ZRES=ZSTORAGE-ZFLUX
     ZWTRH=MAX(ZEPSILON,MAX(ABS(ZSTORAGE),ABS(ZFLUX))*ZEPSILON)
 

@@ -90,7 +90,7 @@ USE YOMGDI1S , ONLY :&
            &,D1SNAFR2 &
            &,D1SLSRF2 ,D1SCRF2  ,D1SLSSF2 ,D1SCSF2  &
            &,D1STE2   ,D1STRO2  ,D1STSRO2 ,D1STIRRFLX2, D1SMLT2  &
-           &,D1SGWREC2,D1SGWCAP2,D1SDELAQ2 &
+           &,D1SGWREC2,D1SGWCAP2,D1SDELAQ2,D1SSNFIRN2 &
            &,D1SVTRA2 ,D1T2M2    ,D1D2M2            &
            &,D1STITRD2,D1STITRU2,D1STILE2,D1STIH2   &
            &,D1STIEVAP2,D1HFLUXRF2,D1WFLUXRF2,D1WSN2&
@@ -738,6 +738,24 @@ IF(LWRWAT)THEN
 !     irrigation
   IF( MYPROC == 1 ) NVARID = NCVID(NPOS,'irrflx',IERR)
   CALL PACK_BUFFER(D1STIRRFLX2(:,IA,:), ZVALUE)
+  ZVALUE = ZVALUE*ZMM
+  CALL MPL_GATHERV(PRECVBUF=ZBUF(:),KROOT=1,PSENDBUF=ZVALUE(:),KRECVCOUNTS=NPOIP(:),CDSTRING="WRTDCDF:")
+  IF( MYPROC == 1 ) THEN
+    ZOUTPUT(:,1)= UNPACK(ZBUF(:),LMASK(ISTP:IENP),RMISS)
+    IF(NACCUR == 1)THEN
+      ZOUTPUTS(:,1)=ZOUTPUT(:,1)
+      CALL NCVPT (NPOS,NVARID,ISTART3,ICOUNT3,ZOUTPUTS(:,1),IERR)
+    ELSE
+      CALL NCVPT (NPOS,NVARID,ISTART3,ICOUNT3,ZOUTPUT(:,1),IERR)
+    ENDIF
+  ENDIF
+
+!     Qsnfirn -- snow-to-firn conversion over glaciers (permanent-snow cap).
+!     Mass leaving the snowpack to the firn/ice reservoir. NOT runoff: on an ice
+!     sheet this becomes ice and leaves by ice dynamics over decades-centuries.
+!     Reported so the water budget can close without routing it to rivers.
+  IF( MYPROC == 1 ) NVARID = NCVID(NPOS,'Qsnfirn',IERR)
+  CALL PACK_BUFFER(D1SSNFIRN2(:,IA,:), ZVALUE)
   ZVALUE = ZVALUE*ZMM
   CALL MPL_GATHERV(PRECVBUF=ZBUF(:),KROOT=1,PSENDBUF=ZVALUE(:),KRECVCOUNTS=NPOIP(:),CDSTRING="WRTDCDF:")
   IF( MYPROC == 1 ) THEN

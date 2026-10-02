@@ -330,7 +330,14 @@ LOGICAL :: LESKTI5   ! new skin conductivity computation for tile 5
 LOGICAL :: LESKTI8   ! new skin conductivity computation for tile 5 
 LOGICAL :: LESOILCOND ! use new soil conductivity as in fcsurf defined function
 LOGICAL :: LEROLAKE   ! runoff as precipitation over resolved lakes
-LOGICAL :: LEWBCALVFIX ! snow-cap excess leaves as ice calving runoff (water conservation)
+LOGICAL :: LEWBCALVFIX ! route the permanent-snow cap overflow into SURFACE RUNOFF.
+                     ! DEFAULT .FALSE., deliberately: on an ice sheet that mass becomes
+                     ! firn then ice and leaves by ice dynamics over decades-centuries,
+                     ! not as river water at the accumulation point (G. Arduini, who
+                     ! removed the original v1.0 ZROFS assignment in ff35da6). The mass
+                     ! is ALWAYS accounted via the Qsnfirn snow-to-firn flux, so the
+                     ! water budget closes either way; this switch only decides whether
+                     ! it is ALSO injected into runoff.
 LOGICAL :: LEWBDEEPFIX ! deepest-layer soil-moisture deficit leaves as sub-surface runoff 
 
 !! TESTING LOGICALS
