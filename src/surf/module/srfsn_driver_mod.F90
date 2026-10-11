@@ -541,8 +541,17 @@ ZWTRH=MAX(ZEPSILON,1.e-8_JPRB)   ! snowmip 3 wm-2
 ZWTRH=MAX(ZEPSILON,1.e-6_JPRB)  ! added for glaciers   
 DO JL=KIDIA,KFDIA
   IF (.NOT. LLNOSNOW(JL)) THEN    
-    ZSTORAGE=PDHTSS(JL,1,15)/PTMST
-    ZFLUX=ZHFLUX(JL)-PDHTSS(JL,1,13)-PDHTSS(JL,1,14)
+! Column budget: the snowpack's storage change is the sum over all KLEVSN
+! layers, and the internal conduction between them cancels in that sum, so
+! what is left is the atmospheric flux in at the top and PGSN out at the base.
+! This used to read layer 1 alone against the whole-pack ZHFLUX and PGSN,
+! which is only the right equation when a single layer is active (KLACT=1);
+! for a deeper pack it compared the top layer's storage with the column's
+! fluxes and so could not close.  PDHTSS(:,:,15) is now a flux (see
+! srfsn_webal_mod.F90), hence no /PTMST, and PDHTSS(:,:,14) is now negative
+! for melt, hence + rather than -.
+    ZSTORAGE=SUM(PDHTSS(JL,1:KLEVSN,15))
+    ZFLUX=ZHFLUX(JL)-PDHTSS(JL,1,13)+SUM(PDHTSS(JL,1:KLEVSN,14))
     ZRES=ZSTORAGE-ZFLUX
     IF ( ABS(ZRES) > ZWTRH ) THEN
        write(*,'("DDH SEBAL:storage,flux,residual (kg/m2/s):",1X,I4,3(1X,E14.6E3))') &
@@ -551,7 +560,7 @@ DO JL=KIDIA,KFDIA
        write(*,'("DDH SEBAL1: snowT t-1",1X,20(1X,E14.6E3))') (ZTSNM1M(JL,JK),JK=1,KLEVSN)
        write(*,'("DDH SEBAL1: snowT t+1",1X,20(1X,E14.6E3))') (PTSNM1M(JL,JK),JK=1,KLEVSN)
        write(*,'("DDH SEBAL1: - basal flux",1X,1(1X,E14.6E3))') -PDHTSS(JL,1,13)
-       write(*,'("DDH SEBAL1: - phase changes",1X,1(1X,E14.6E3))') -PDHTSS(JL,1,14)
+       write(*,'("DDH SEBAL1: phase changes",1X,1(1X,E14.6E3))') SUM(PDHTSS(JL,1:KLEVSN,14))
        write(*,'("DDH SEBAL1: ZHFLUX",1X,1(1X,E14.6E3))') ZHFLUX(JL)
        ZTMP=PFRTI(JL,5)*PAHFSTI(JL,5)+PFRTI(JL,7)*PAHFSTI(JL,7)
        write(*,'("DDH SEBAL1: Qh",1X,1(1X,E14.6E3))') ZTMP

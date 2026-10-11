@@ -268,7 +268,12 @@ D1STNSRU(KIDIA:KFDIA,IBL) = PDDHS%PDHTSS(KIDIA:KFDIA,1,8)
 D1STNTRD(KIDIA:KFDIA,IBL) = PDDHS%PDHTSS(KIDIA:KFDIA,1,9)
 D1STNTRU(KIDIA:KFDIA,IBL) = PDDHS%PDHTSS(KIDIA:KFDIA,1,10)
 D1STNGFL(KIDIA:KFDIA,IBL) = PDDHS%PDHTSS(KIDIA:KFDIA,1,13)
-D1STNM(KIDIA:KFDIA,IBL)   = PDDHS%PDHTSS(KIDIA:KFDIA,1,14)
+! Qfsn: snow phase-change energy, summed over all KLEVSN snow layers. The
+! multi-layer scheme melts and refreezes in every layer (srfsn_webal_mod.F90
+! runs the phase-change loop over 1:KLACT), so layer 1 alone was a fraction of
+! the pack's phase-change energy -- measured at roughly a ninth of it over a
+! global day. The single-layer schemes fill layer 1 only and zero the rest.
+D1STNM(KIDIA:KFDIA,IBL)   = SUM(PDDHS%PDHTSS(KIDIA:KFDIA,1:KLEVSN,14),DIM=2)
 D1HFLUXRF(KIDIA:KFDIA,IBL) = 0._JPRB ! PDHTSS(KIDIA:KFDIA,1,16) Not available in surf
 
 ! Soil energy fluxes
@@ -409,8 +414,8 @@ D1SALB(KIDIA:KFDIA,IBL) = PCLIM%PALB(KIDIA:KFDIA)
 D1SVEGEV(KIDIA:KFDIA,IBL) = 0._JPRB ! not used
 ! DelSoilHeat: soil heat content change, summed over all KLEVS soil layers.
 ! PDHTTS(:,JK,15) is RRCSOIL*RDAT(JK)*(T_new-T_old)/PTMST per layer
-! (srft_mod.F90:411) -- W m-2, exactly the form PDHTSS(:,1,15) has for snow,
-! which D1STNDH (DelColdCont) reads directly on the next line. NDHFTTS's own
+! (srft_mod.F90:411) -- W m-2, the same form the snow analogue PDHTSS(:,:,15)
+! has, which D1STNDH (DelColdCont) sums below. NDHFTTS's own
 ! comment in sucdh1s.F90:89 already names its last flux "soil heat content
 ! change", so slot 15 was reserved for this and simply never wired up.
 ! No PTSPHY factor: GDIAUX1S bucket 2 accumulates TSTEP*bucket 1 generically
@@ -437,7 +442,15 @@ D1SVEGEV(KIDIA:KFDIA,IBL) = 0._JPRB ! not used
 ! silent zero that reads as a measured term worth nothing, and it left the
 ! offline energy budget missing its main storage term.
 D1SDSH(KIDIA:KFDIA,IBL) = SUM(PDDHS%PDHTTS(KIDIA:KFDIA,1:KLEVS,15),DIM=2)
-D1STNDH(KIDIA:KFDIA,IBL) = PDDHS%PDHTSS(KIDIA:KFDIA,1,15)     ! DelColdCont
+! DelColdCont: snow heat content change, summed over all KLEVSN snow layers,
+! for the same reason as DelSoilHeat above -- the storage term of a reservoir
+! is the whole reservoir's. Reading layer 1 alone gave the top layer of five,
+! which carries the diurnal swing and almost none of the heat capacity: over a
+! global day it integrated to -376 EJ where the column change is +27 EJ, and
+! the hourly values reached 10% of the entire global snowpack's cold content.
+! Also fixed, in srfsn_webal_mod.F90: that slot was C*dT in J m-2 under
+! LESNML, not a flux, so it arrived here a further factor PTMST too large.
+D1STNDH(KIDIA:KFDIA,IBL) = SUM(PDDHS%PDHTSS(KIDIA:KFDIA,1:KLEVSN,15),DIM=2)
 
 ! Sum over all KLEVSN snow layers, not just layer 1 -- PSNSE1 is documented
 ! as MULTI-LAYER snow mass per unit surface (already kg/m2/s, no depth

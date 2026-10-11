@@ -380,6 +380,11 @@ DO JL=KIDIA,KFDIA
 !    PDHTSS(JL,1,15)=PDHTSS(JL,1,1)*(PTSN(JL)-PTSNM1M(JL))/PTMST &
 !      &-PDHTSS(JL,1,14)  
     PDHTSS(JL,1,15)=PDHTSS(JL,1,1)*(PTSN(JL)-PTSNM1M(JL))/PTMST 
+! Zero the layers the single-layer scheme never fills.  The caller sizes
+! PDHTSS as (KLON,KLEVSN,...) with KLEVSN=NCSNEC regardless of LESNML
+! (cpg1s.F90:244), and PDHTSS is INTENT(OUT), so layers 2:KLEVSN would be
+! undefined.  upddiag.F90 sums slots 14 and 15 over the whole column.
+    PDHTSS(JL,2:,14:15)=0._JPRB
 ! Snow mass
     PDHSSS(JL,1,1)=PSSNM1M(JL)
 ! Large-scale snowfall

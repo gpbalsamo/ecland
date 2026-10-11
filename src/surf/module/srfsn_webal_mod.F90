@@ -411,17 +411,30 @@ DO JL=KIDIA,KFDIA
         PDHTSS(JL,JK,4)=PSSNM1M(JL,JK) / PRSNM1M(JL,JK)
       ! Snow basal heat flux
         PDHTSS(JL,1,13)=PGSN(JL)
-      ! phase changes
-        PDHTSS(JL,JK,14)=PMELTSN(JL,JK)+PFREZSN(JL,JK)
-      ! Snow heat content change
-        PDHTSS(JL,JK,15)=ZSNHC(JL,JK)*PTMST*(PTSN(JL,JK)-PTSNM1M(JL,JK))
+      ! phase changes.  Sign convention: NEGATIVE for melt, i.e. energy taken
+      ! out of the layer, matching -RLMLT*PMSN in the single-layer schemes
+      ! (srfsn_mod.F90:378, srfsn_lwimp_mod.F90:560).  The opposite sign was
+      ! used here, so the output Qfsn silently changed meaning with LESNML.
+      ! PDHSSS(:,:,5) below keeps its own, unchanged sign -- it feeds the water
+      ! diagnostic Qsm, which is validated and must not move.
+        PDHTSS(JL,JK,14)=-(PMELTSN(JL,JK)+PFREZSN(JL,JK))
+      ! Snow heat content change, as a FLUX in W m-2.  ZSNHC is already a heat
+      ! capacity divided by the timestep (ZTMST=1/PTMST, line 185, applied at
+      ! line 248), so multiplying by PTMST as this line used to do returned
+      ! C*dT in J m-2 -- an energy, not a rate.  Slots 1 and 3 above are
+      ! deliberately energies and keep their *PTMST; this one is a flux, as in
+      ! srfsn_lwimp_mod.F90:466, because that is what the offline driver reads
+      ! into DelColdCont and what netcdf_utils.F90 labels W m-2.
+        PDHTSS(JL,JK,15)=ZSNHC(JL,JK)*(PTSN(JL,JK)-PTSNM1M(JL,JK))
       
       ! SNOW MASS
         PDHSSS(JL,JK,1)=PSSNM1M(JL,JK)
       ! snow evap
         PDHSSS(JL,JK,4)=PEVAPSN(JL)
-      ! phase changes (snow melt/refreezing)
-        PDHSSS(JL,JK,5)=PDHTSS(JL,JK,14)/RLMLT
+      ! phase changes (snow melt/refreezing).  Written from PMELTSN/PFREZSN
+      ! directly, not from PDHTSS(:,:,14)/RLMLT, so that the sign fix above
+      ! leaves this term -- and therefore Qsm -- bit-for-bit unchanged.
+        PDHSSS(JL,JK,5)=(PMELTSN(JL,JK)+PFREZSN(JL,JK))/RLMLT
 !       ! snow liquid water content 
 !       PDHSSS(JL,JK,6)=PWSNM1M(JL,JK)
 !       ! snow runoff 
