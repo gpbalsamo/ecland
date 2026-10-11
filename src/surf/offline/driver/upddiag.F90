@@ -407,7 +407,36 @@ IF (KTILES > 9) THEN
 ENDIF
 D1SALB(KIDIA:KFDIA,IBL) = PCLIM%PALB(KIDIA:KFDIA)
 D1SVEGEV(KIDIA:KFDIA,IBL) = 0._JPRB ! not used
-D1SDSH(KIDIA:KFDIA,IBL) = 0._JPRB ! DelSoilHeat of skin layer (0)
+! DelSoilHeat: soil heat content change, summed over all KLEVS soil layers.
+! PDHTTS(:,JK,15) is RRCSOIL*RDAT(JK)*(T_new-T_old)/PTMST per layer
+! (srft_mod.F90:411) -- W m-2, exactly the form PDHTSS(:,1,15) has for snow,
+! which D1STNDH (DelColdCont) reads directly on the next line. NDHFTTS's own
+! comment in sucdh1s.F90:89 already names its last flux "soil heat content
+! change", so slot 15 was reserved for this and simply never wired up.
+! No PTSPHY factor: GDIAUX1S bucket 2 accumulates TSTEP*bucket 1 generically
+! (cpg1s.F90:319) and wrtdcdf writes that bucket, same as for DelColdCont.
+! Soil fusion is NOT double-counted here -- that is index 12, summed over
+! layers and written separately as Qf (wrtdcdf.F90:597):
+!   index 15 =  RRCSOIL*RDAT*dT/dt            -> DelSoilHeat (this line)
+!   index 12 = -(PCTSA-RRCSOIL)*RDAT*dT/dt    -> Qf
+! so 15 - 12 = PCTSA*RDAT*dT/dt, the full storage change -- which is exactly
+! what the offline budget reconstructs, since it ADDS Qf and SUBTRACTS
+! DelSoilHeat.
+!
+! CAVEAT for anyone touching the soil solver: index 15 differences ZTSA, the
+! tridiagonal solution, against PTSAM1M, whereas the new temperature is
+! PTSA = PTSAM1M*(1-1/RSIMP) + ZTSA (srft_mod.F90:349). These agree only
+! because RSIMP = 1 (sussoil_mod.F90:493). A different RSIMP would silently
+! make this term wrong -- and PTSDFL (srft_mod.F90:338) with it.
+!
+! This was hardcoded to 0 with the comment "DelSoilHeat of skin layer (0)".
+! GDIAUX1S's third dimension is the accumulation bucket, not a level
+! (I3D=2, sugdi1s.F90:178), so no per-layer value could ever have reached the
+! output: DelSoilHeat was identically zero at every land point in every run,
+! while still being written to o_efl.nc with a long name and units J m-2 -- a
+! silent zero that reads as a measured term worth nothing, and it left the
+! offline energy budget missing its main storage term.
+D1SDSH(KIDIA:KFDIA,IBL) = SUM(PDDHS%PDHTTS(KIDIA:KFDIA,1:KLEVS,15),DIM=2)
 D1STNDH(KIDIA:KFDIA,IBL) = PDDHS%PDHTSS(KIDIA:KFDIA,1,15)     ! DelColdCont
 
 ! Sum over all KLEVSN snow layers, not just layer 1 -- PSNSE1 is documented

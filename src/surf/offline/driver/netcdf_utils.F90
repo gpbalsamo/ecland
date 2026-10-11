@@ -366,12 +366,21 @@ SELECT CASE(CNAME)
   CASE('Qfsn')
     CLNAME='snow fusion heat flux'
     CUNITS='W m-2'
+! Both of these are written through exactly the same path as Qf/Qg above --
+! bucket IA of the accumulator, times ZWA (wrtdcdf.F90:613,628) -- and with
+! LACCUMW that is ZWA=1/(NFRPOS*TSTEP), i.e. a MEAN RATE in W m-2, not an
+! accumulated energy. The 'J m-2' they used to declare was wrong, and it makes
+! any unit-aware post-processing under-scale them by the output interval.
+! Measured 2026-10-11: regressing DelSoilHeat on the soil temperature change
+! from o_gg.nc gives a slope of 609.3, and 609.3*3600 = 2.1935E6 J m-3 K-1 =
+! RRCSOIL exactly (sussoil_mod.F90:487), with correlation 1.000000. The soil
+! energy budget then closes to 3E-10: Qg + (DelSoilHeat - Qf) = 0.
   CASE('DelSoilHeat')
     CLNAME='soil heat content change'
-    CUNITS='J m-2'
+    CUNITS='W m-2'
   CASE('DelColdCont')
     CLNAME='snow heat content change'
-    CUNITS='J m-2'
+    CUNITS='W m-2'
   CASE('LWup')
     CLNAME='upward longwave flux'
     CUNITS='W m-2'
